@@ -19,7 +19,8 @@ current milestone.
 
 | Part | Directory | Status |
 | --- | --- | --- |
-| Correction engine and rule cards | [`engine/`](engine/) | In progress (M1) |
+| Correction engine and 51 rule cards | [`engine/`](engine/) | Working (M1 done) |
+| Exercises and logic errors | `engine/` | Next (M2) |
 | Web app | `app/` | Planned (M3) |
 | Tutor model training | `training/` | Planned (M6, M7) |
 | VS Code extension | `extension/` | Planned (M9) |

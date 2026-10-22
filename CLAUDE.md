@@ -35,10 +35,10 @@ Read these before making significant changes:
 ## Repository layout
 
 ```
-engine/      Python package `pymentor`: the shared core. Standard library only.
-  src/pymentor/        engine modules
-  src/pymentor/cards/  the rule-card library (TOML)
-  tests/
+engine/      Python package `pymentor`: the shared core. Standard library only. (M1 done)
+  src/pymentor/        engine modules (see docs/architecture.md for each)
+  src/pymentor/cards/  the rule-card library (TOML), one file per topic
+  tests/               test_cards.py self-tests every card from its examples
 app/         web app (M3, not started)
 training/    model training (M6/M7, not started)
 benchmark/   frozen evaluation sets (M5, not started)

@@ -83,19 +83,22 @@ are all `NameError`, but each is a different lesson.
 ```toml
 [[card]]
 id = "name-typo"
-title = "`{name}` is a misspelling of `{similar_name}`"
+title = "`{name}` is not defined. Did you mean `{similar_name}`?"
 match = { code = "NameError", when = { similar_name = true } }
+priority = 50
 rule = "Python only knows names you've created. A misspelling is a brand-new, unknown name."
 why = "Python can't guess what you meant, since a typo could also be a real variable you forgot to create."
 hints = ["Look closely at `{name}` on line {line}.", "Compare it with the names you created earlier."]
-fix = "replace_name"
-examples = [{ source = "total = 0\nprint(totl)\n" }]
+fix = "replace_name:similar_name"   # generator, and the feature holding the replacement
+examples = [{ source = "total = 0\nprint(totl)\n", after = "print(total)" }]
 ```
 
 Matching: a card applies when `code` matches, the optional `message` regex
 matches Python's message, and every `when` condition holds against the
-extracted features. **The most specific card wins**: the one with the most
-conditions, with ties broken by `priority`. Every card has at least one
+extracted features. **The most specific card wins**: the highest `priority`
+first, then the most conditions (a `message` pattern counts as one), then file
+order. A condition of `true` means the feature is truthy, `false` means falsy
+or missing, and any other value must be equal. Every card has at least one
 `examples` entry, and the test suite checks that each example triggers exactly
 that card and that its fix verifies. The library tests itself, so adding a
 card never needs new test code.
@@ -254,3 +257,18 @@ cover these before any model exists. The model handles the rest. *Accepted.*
 **D18. Monorepo, one directory per deliverable.** The engine, app, training
 code and extension evolve together and share cards and fixtures. The engine is
 the only package the others depend on. *Accepted.*
+
+**D19. ⚑ Style findings still show while a syntax error blocks the file.**
+The design doc's mockup shows a red syntax error and a blue style hint at the
+same time, but style checks need code that compiles. When the syntax error has
+a verified fix that keeps every line in place, the engine checks style on the
+fixed version and reports findings on the other lines, without fixes of their
+own until the file compiles. *Accepted.*
+
+**D20. Fix candidates are verified in order, and only the first one that
+verifies is shown.** A generator can propose several candidates (for example,
+tabs expanded to 4 spaces, then to 8), so one generator handles the
+common variants of a mistake without guessing. A fix that only moves the error
+is rejected: in `"Next: " + age + 1`, wrapping `input()` in `int()` would fail
+again on the same line, so no fix is offered and the card's hints do the
+teaching. *Accepted.*

@@ -29,12 +29,12 @@ open questions.
 | Languages at launch | English. Card text is kept in plain fields so it can be translated, with Hindi as the first candidate. | M8 |
 | Base model for Track A | Shortlisted at build time: ≤500M parameters, permissive licence, code in its pretraining data | M6 |
 | Final name | "PyMentor" is a working title. The package is `pymentor`, and renaming it is a find-and-replace. | Before the first public release |
-| First ~100 cards | Start with ~43 cards covering common beginner errors, then rank the rest by the Phase 1 error log | M4 |
+| First ~100 cards | Start with 51 cards covering common beginner errors (done in M1), then rank the rest by the Phase 1 error log | M4 |
 | Licence and open source | None yet, so all rights are reserved until decided. Recommended: MIT for code, CC BY 4.0 for cards and curriculum. | Before the first public release |
 | Training hardware | Laptop RTX 3050 (4 GB) for development and fine-tuning. A rented 24 GB GPU for a day of Track B pretraining. | M7 |
 | Hosting | Cloudflare Pages: static, free, and allows the custom headers cross-origin isolation needs | M3 |
 
-## M0: Repo foundation
+## M0: Repo foundation ✅
 
 - [x] `CLAUDE.md`, `README.md`, `docs/vision.md`, `docs/architecture.md`, `docs/plan.md`
 - [x] `.gitignore`, `.editorconfig`, root `ruff.toml`
@@ -44,47 +44,52 @@ open questions.
 **Done when:** a fresh clone plus the commands in `CLAUDE.md` gives green lint
 and tests, and CI is green.
 
-## M1: Engine core
+## M1: Engine core ✅
 
 The shared library everything else builds on.
 
-- [ ] `facts.py`: Diagnostic, Finding, Fix and RenderedCard, with JSON
+- [x] `facts.py`: Diagnostic, Finding, Fix and RenderedCard, with JSON
       serialisation (`to_dict`) for the JavaScript side
-- [ ] `syntax.py`: `compile()` to a Diagnostic for SyntaxError,
+- [x] `syntax.py`: `compile()` to a Diagnostic for SyntaxError,
       IndentationError and TabError, with normalised positions
-- [ ] `sandbox.py`: in-process execution with stdin fed from a list, captured
-      stdout, a step budget for infinite loops, facts from the learner's
-      deepest traceback frame, and collapsed recursion
-- [ ] `isolated.py`: the sandbox in a subprocess with a hard timeout
-- [ ] `style.py`: naming (variables, functions, classes), shadowed builtins,
+- [x] `sandbox.py`: in-process execution with stdin fed from a list (or a
+      callable, for the browser), captured stdout, a step budget for infinite
+      loops, facts from the learner's deepest traceback frame, and collapsed
+      recursion
+- [x] `isolated.py`: the sandbox in a subprocess with a hard timeout
+- [x] `style.py`: naming (variables, functions, classes), shadowed builtins,
       `== None` and `== True`/`False`
-- [ ] `features.py`: extractors (similar names in learner code, misspelled
-      builtins, missing imports, a name defined later, values that come from
-      `input()`, in-place method results, keyword used as a name, and so on)
-- [ ] `cards.py`: TOML schema, loader, validator and the most-specific-wins
+- [x] `features.py`: extractors (similar names in learner code, misspelled
+      builtins, missing imports, a name defined later or only inside a
+      function, values that come from `input()`, in-place method results, a
+      keyword used as a name, loop conditions that never change, and so on)
+- [x] `cards.py`: TOML schema, loader, validator and the most-specific-wins
       matcher
-- [ ] Starter card library with examples:
-  - syntax: `missing-colon`, `assign-in-condition`, `indent-expected`,
+- [x] Starter card library: 51 cards, each with examples the tests check
+  - syntax (13): `missing-colon`, `assign-in-condition`, `indent-expected`,
     `unexpected-indent`, `unindent-mismatch`, `tabs-and-spaces`,
     `unterminated-string`, `bracket-never-closed`, `bracket-unmatched`,
-    `print-statement`, `missing-comma`, `keyword-as-name`
-  - names: `name-typo`, `builtin-typo`, `missing-import`,
-    `used-before-assignment`, `name-meant-string`, `name-undefined`,
-    `unbound-local`
-  - types: `str-plus-int`, `input-is-string`, `not-callable`,
-    `not-subscriptable`, `int-not-iterable`, `str-immutable`,
-    `missing-argument`
-  - values and other: `index-out-of-range`, `key-missing`, `zero-division`,
-    `int-conversion`, `none-attribute`, `attribute-typo`,
-    `attribute-missing`, `recursion-limit`, `module-not-found`,
-    `infinite-loop`, `input-exhausted`
-  - style: `naming-variable`, `naming-function`, `naming-class`,
+    `bracket-mismatch`, `print-statement`, `missing-comma`, `keyword-as-name`
+  - names (10): `name-typo`, `builtin-typo`, `missing-import`,
+    `used-before-assignment`, `name-in-function`, `name-meant-string`,
+    `name-undefined`, `unbound-local`, `module-typo`, `module-not-found`
+  - types (11): `input-is-string`, `str-plus-int`, `called-shadowed-builtin`,
+    `not-callable`, `brackets-for-call`, `not-subscriptable`,
+    `int-not-iterable`, `str-immutable`, `missing-argument`,
+    `int-conversion-decimal`, `int-conversion`
+  - lookups (6): `index-out-of-range`, `key-missing`,
+    `none-from-inplace-method`, `none-attribute`, `attribute-typo`,
+    `attribute-missing`
+  - running (5): `zero-division`, `recursion-limit`,
+    `loop-condition-unchanged`, `infinite-loop`, `input-exhausted`
+  - style (6): `naming-variable`, `naming-function`, `naming-class`,
     `builtin-shadowed`, `compare-none`, `compare-bool`
-- [ ] `fixes.py`: fix generators and the verification rule from
+- [x] `fixes.py`: 22 fix generators and the verification rule from
       `architecture.md`
-- [ ] `engine.py`: `Engine.check(source)` for live static checks and
-      `Engine.run(source, inputs)` for the full run
-- [ ] CLI: `python -m pymentor check FILE [--run] [--input VALUE ...]`
+- [x] `engine.py`: `Engine.check(source)` for live static checks and
+      `Engine.run(source, inputs)` for the full run. Style findings also show
+      behind a syntax error (D19).
+- [x] CLI: `python -m pymentor check FILE [--run] [--input VALUE ...] [--json]`
 
 **Done when:**
 
