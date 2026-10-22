@@ -203,5 +203,5 @@ def _rows(path: Path) -> list[dict[str, Any]]:
 
 
 def _append(path: Path, row: dict[str, Any]) -> None:
-    with path.open("a", encoding="utf-8") as file:
+    with path.open("a", encoding="utf-8", newline="\n") as file:
         file.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")

@@ -69,9 +69,9 @@ def write(cases: list[dict[str, Any]], folder: Path) -> str:
         raise FileExistsError(f"{folder} is frozen; build a new version instead")
     folder.mkdir(parents=True, exist_ok=True)
     text = "".join(json.dumps(c, ensure_ascii=False, sort_keys=True) + "\n" for c in cases)
-    (folder / "cases.jsonl").write_text(text, encoding="utf-8")
+    (folder / "cases.jsonl").write_text(text, encoding="utf-8", newline="\n")
     digest = hashlib.sha256(text.encode()).hexdigest()
-    (folder / "SHA256SUMS").write_text(f"{digest}  cases.jsonl\n", encoding="utf-8")
+    (folder / "SHA256SUMS").write_text(f"{digest}  cases.jsonl\n", encoding="utf-8", newline="\n")
     return digest
 
 

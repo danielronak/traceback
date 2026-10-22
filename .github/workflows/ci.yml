@@ -70,11 +70,14 @@ jobs:
         run: |
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -e "engine[dev]" -e pipeline -e "training[dev]"
-      - name: Test
-        run: |
-          pytest engine
-          pytest pipeline
-          pytest training
+      # One suite per step: in PowerShell a multi-line step only fails if its
+      # last command does, which once hid a failure here.
+      - name: Test the engine
+        run: pytest engine
+      - name: Test the pipeline
+        run: pytest pipeline
+      - name: Test training
+        run: pytest training
 
   app:
     runs-on: ubuntu-latest

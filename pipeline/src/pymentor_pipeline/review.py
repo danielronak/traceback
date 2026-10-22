@@ -49,7 +49,7 @@ def review(
         note = ask("note (optional): ").strip() if answer == "n" else ""
         verdict = VERDICTS[answer]
         tally[verdict] += 1
-        with path.open("a", encoding="utf-8") as file:
+        with path.open("a", encoding="utf-8", newline="\n") as file:
             entry = {"case": row["case"], "task": row["task"], "verdict": verdict, "note": note}
             file.write(json.dumps(entry, ensure_ascii=False) + "\n")
     return tally
