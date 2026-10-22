@@ -126,7 +126,7 @@ class _StyleChecker(ast.NodeVisitor):
     def _check_binding(self, node: ast.AST, name: str) -> None:
         if name in SHADOWED_BUILTINS:
             self._report(node, "builtin-shadowed", f"'{name}' is the name of a built-in", name=name)
-        elif not SNAKE_CASE.match(name) and not UPPER_CASE.match(name):
+        elif not SNAKE_CASE.match(name) and not UPPER_CASE.match(name) and name.strip("_"):
             self._report(
                 node,
                 "naming-variable",
