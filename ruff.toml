@@ -1,5 +1,7 @@
 target-version = "py313"
 line-length = 100
+# Seed programs are deliberately beginner-style code, checked by the engine instead.
+extend-exclude = ["pipeline/corpus/programs"]
 
 [lint]
 select = [
@@ -15,6 +17,7 @@ select = [
 [lint.per-file-ignores]
 # Test snippets intentionally contain beginner mistakes inside strings.
 "engine/tests/**" = ["E501"]
+"pipeline/tests/**" = ["E501"]
 
 [lint.isort]
-known-first-party = ["pymentor"]
+known-first-party = ["pymentor", "pymentor_pipeline"]

@@ -1,0 +1,79 @@
+{
+  "items": 1500,
+  "overall": {
+    "n": 1500,
+    "grounded": 1.0,
+    "problems": {},
+    "mean_words": 18.7,
+    "over_limit": 0.0,
+    "with_code": 0,
+    "fix_ok": null,
+    "ms_p50": 0.0,
+    "ms_p95": 0.0,
+    "missing": 0
+  },
+  "tasks": {
+    "explain": {
+      "n": 300,
+      "grounded": 1.0,
+      "problems": {},
+      "mean_words": 27.8,
+      "over_limit": 0.0,
+      "with_code": 0,
+      "fix_ok": null,
+      "ms_p50": 0.0,
+      "ms_p95": 0.0,
+      "missing": 0
+    },
+    "hint_level_1": {
+      "n": 300,
+      "grounded": 1.0,
+      "problems": {},
+      "mean_words": 10.8,
+      "over_limit": 0.0,
+      "with_code": 0,
+      "fix_ok": null,
+      "ms_p50": 0.0,
+      "ms_p95": 0.0,
+      "missing": 0
+    },
+    "hint_level_2": {
+      "n": 300,
+      "grounded": 1.0,
+      "problems": {},
+      "mean_words": 12.2,
+      "over_limit": 0.0,
+      "with_code": 0,
+      "fix_ok": null,
+      "ms_p50": 0.0,
+      "ms_p95": 0.0,
+      "missing": 0
+    },
+    "hint_level_3": {
+      "n": 300,
+      "grounded": 1.0,
+      "problems": {},
+      "mean_words": 8.8,
+      "over_limit": 0.0,
+      "with_code": 0,
+      "fix_ok": null,
+      "ms_p50": 0.0,
+      "ms_p95": 0.0,
+      "missing": 0
+    },
+    "why_followup": {
+      "n": 300,
+      "grounded": 1.0,
+      "problems": {},
+      "mean_words": 34.1,
+      "over_limit": 0.0,
+      "with_code": 0,
+      "fix_ok": null,
+      "ms_p50": 0.0,
+      "ms_p95": 0.0,
+      "missing": 0
+    }
+  },
+  "model": "template",
+  "benchmark": "v0"
+}

@@ -203,35 +203,45 @@ cards matter.
 
 Depends only on M1.
 
-- [ ] `prompt.py`: task tokens and the code window (error line ±3 plus the
+- [x] `prompt.py`: task tokens and the code window (error line ±3 plus the
       enclosing function), shared by data generation and inference (D10)
-- [ ] `grounding.py`: allowed line numbers, identifiers that must exist,
+- [x] `grounding.py`: allowed line numbers, identifiers that must exist,
       code that must pass the engine, and lexical contradiction checks against
       the card (D11)
-- [ ] Seed corpus of correct beginner programs, with sources and licences
+- [x] Seed corpus of correct beginner programs, with sources and licences
       recorded
-- [ ] Bug mutators: drop a colon, misspell a name, break indentation,
+- [x] Bug mutators: drop a colon, misspell a name, break indentation,
       `==` to `=`, off-by-one `range`, remove `str()`/`int()`, drop an import,
       unclose a bracket, a Python 2 `print`, `print` instead of `return`
-- [ ] Generator CLI: mutate, run in `isolated.py`, keep examples with a matched
+- [x] Generator CLI: mutate, run in `isolated.py`, keep examples with a matched
       card, dedupe, and split by seed program (D16). Output is JSONL.
-- [ ] Teacher drafting script: a large model drafts outputs per task. Confirm
-      and document that its terms of use allow training on its outputs. Add a
-      small review tool for spot checks.
-- [ ] Benchmark v0: ~300 held-out cases (hand-written plus mutations of
+      *(Runs in spawned workers with a hard timeout instead, D38.)*
+- [x] Teacher drafting script: a local open-weight model drafts outputs per
+      task, judged by grounding and fix verification, with a small review
+      tool for spot checks. No hosted or paid APIs (D40).
+- [x] Benchmark v0: ~300 held-out cases (hand-written plus mutations of
       held-out programs), frozen in `benchmark/v0/`
-- [ ] Evaluation harness: scores any model callable on fix correctness,
+- [x] Evaluation harness: scores any model callable on fix correctness,
       grounding rate, length and latency, and exports a hand-scoring sheet for
       clarity and hint quality
-- [ ] Template baseline scored (D12)
+- [x] Template baseline scored (D12)
 
 **Done when:** the generator produces ≥20k verified examples and the harness
 reports the template baseline.
 
+**Status:** done. The generator gives ~85k engine-verified prompts from ~17k
+cases (D38); benchmark v0 holds 300 cases across all 81 cards, and the template
+baseline is 100% grounded (D39). Drafting works with any local model server,
+but no teacher has run yet: the teacher model is picked alongside M6's base
+model (D40).
+
 ## M6: Track A, fine-tuning an existing model (fallback and comparison)
 
 - [ ] `training/` package, with its own dependencies (PyTorch, transformers)
-- [ ] Shortlist and pick a base model, and record why
+- [ ] Shortlist and pick a base model, and record why; pick the local teacher
+      model (D40) at the same time
+- [ ] Draft training targets with the local teacher, spot-check them with the
+      review tool, and record the teacher and its licence in the data card
 - [ ] SFT script (full fine-tune), with task tokens added as special tokens
 - [ ] Evaluate, quantise to int4 ONNX, then re-evaluate, since tiny models are
       sensitive to quantisation

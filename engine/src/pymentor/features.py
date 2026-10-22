@@ -233,6 +233,7 @@ def _syntax(context: Context) -> Features:
         # A valid else/elif never errors on its own line, so one that does
         # has no if (or loop, or try) for it to belong to.
         features["orphan_else"] = word in ("else", "elif") and context.diagnostic.col == 0
+    features["in_condition"] = features.get("keyword") in ("if", "elif", "while")
     match = context.message_match(r"^cannot assign to (literal|function call|expression)")
     if match:
         features["assign_target"] = match[1]
@@ -248,12 +249,18 @@ STATEMENT_KEYWORDS = (
 
 
 def _keyword_typo(word: str) -> str | None:
-    """`whlie`, `retrun`, `If`: a misspelled statement keyword."""
+    """`whlie`, `retrun`, `If`, `ddef`, `fro`: a misspelled statement keyword."""
     if word in keyword.kwlist or word in PUBLIC_BUILTINS:
         return None
     lowered = word.lower()
     if lowered in STATEMENT_KEYWORDS:
         return lowered  # `If`, `Def`: right word, wrong capital
+    undoubled = re.sub(r"(.)\1", r"\1", lowered)
+    if undoubled in STATEMENT_KEYWORDS:
+        return undoubled  # `ddef`, `iff`: a doubled letter
+    for candidate in STATEMENT_KEYWORDS:
+        if len(candidate) <= 4 and sorted(candidate) == sorted(lowered):
+            return candidate  # `fro`, `fi`: letters swapped (Python said the line is invalid)
     # Short keywords can't be told apart from ordinary names, so be strict.
     return closest(word, frozenset(k for k in STATEMENT_KEYWORDS if len(k) >= 4), cutoff=0.8)
 
@@ -321,6 +328,12 @@ def _name_error(context: Context) -> Features:
 
     similar = closest(name, user_names - {name})
     builtin = None if similar else closest(name, PUBLIC_BUILTINS - {name}, cutoff=0.8)
+    if not similar and not builtin and node is not None and _is_called(tree, node):
+        # Too short for similarity (`itn`, `eln`): the same letters as a builtin.
+        same_letters = sorted(
+            b for b in COMMON_CALLS if b != name and sorted(b) == sorted(name.lower())
+        )
+        builtin = same_letters[0] if same_letters else None
     module = name if name in STDLIB_MODULES and name not in user_names else None
     return {
         "similar_name": similar,
@@ -331,7 +344,40 @@ def _name_error(context: Context) -> Features:
         "defined_in_function": local_elsewhere[0].scope if local_elsewhere else None,
         "in_print": in_print,
         "word_like": name.isalpha(),
+        "looks_like_text": in_print or (node is not None and _used_as_a_value(tree, node)),
     }
+
+
+# Builtins beginners call all the time; a same-letters typo of one is a typo.
+COMMON_CALLS = ("int", "len", "str", "sum", "max", "min", "abs", "print", "input", "range", "float")
+
+
+def _is_called(tree: ast.Module, node: ast.Name) -> bool:
+    return any(isinstance(n, ast.Call) and n.func is node for n in ast.walk(tree))
+
+
+def _used_as_a_value(tree: ast.Module, node: ast.Name) -> bool:
+    """`name = Ada`, `[apple, "kiwi"]`, `menu[tea]`, `x in aeiou`: places where
+    a bare word is far more likely to be missing quotes than a missing variable.
+    (In arithmetic, `y = x + 1`, it's more likely a missing variable.)"""
+    if not (len(node.id) >= 3 and node.id.isalpha()):
+        return False
+    for parent in ast.walk(tree):
+        if isinstance(parent, ast.Assign) and parent.value is node:
+            return True
+        if isinstance(parent, ast.List | ast.Tuple | ast.Set) and node in parent.elts:
+            return True
+        if isinstance(parent, ast.Dict) and (node in parent.keys or node in parent.values):
+            return True
+        if isinstance(parent, ast.Subscript) and parent.slice is node:
+            return True
+        if isinstance(parent, ast.Call) and node in parent.args and parent.func is not node:
+            return True
+        if isinstance(parent, ast.Compare) and node in parent.comparators:
+            return True
+        if isinstance(parent, ast.Return) and parent.value is node:
+            return True
+    return False
 
 
 @extractor("UnboundLocalError")
@@ -341,12 +387,16 @@ def _unbound_local(context: Context) -> Features:
         return {}
     name = match[1]
     function = enclosing_function(context.tree, context.diagnostic.line)
+    of_name = [b for b in bindings(context.tree) if b.name == name]
+    global_defined = any(b.scope == "<module>" for b in of_name)
+    scope = function.name if function else "<module>"
     return {
         "name": name,
         "function": function.name if function else None,
-        "global_defined": any(
-            b.name == name and b.scope == "<module>" for b in bindings(context.tree)
-        ),
+        "global_defined": global_defined,
+        # Only local, and created further down: lines in the wrong order.
+        "defined_later": not global_defined
+        and any(b.scope == scope and b.line > context.diagnostic.line for b in of_name),
     }
 
 
@@ -364,7 +414,10 @@ def _type_error(context: Context) -> Features:
     match = context.message_match(r"^unsupported operand type\(s\) for (.+?): '(\w+)' and '(\w+)'")
     if match:
         features.update(operator=match[1], left_type=match[2], right_type=match[3])
-    if "left_type" in features and tree is not None:
+    if tree is not None and (
+        "left_type" in features
+        or context.message_match(r"^not all arguments converted during string formatting")
+    ):
         features.update(_from_input(tree, diagnostic))
 
     for pattern in (
@@ -376,6 +429,10 @@ def _type_error(context: Context) -> Features:
         match = context.message_match(pattern)
         if match:
             features["obj_type"] = match[1]
+    # `int[x]`: a type (int, str, float...) used with [ ] where ( ) converts.
+    called_type = context.message_match(r"^type '(\w+)' is not subscriptable")
+    if called_type:
+        features["obj_type"] = "type"
 
     if tree is not None and context.message_match(r"is not callable"):
         call = node_at(tree, diagnostic, ast.Call)
@@ -390,6 +447,7 @@ def _type_error(context: Context) -> Features:
             "function",
             "builtin_function_or_method",
             "method",
+            "type",
         )
         node = node_at(tree, diagnostic, ast.Subscript) if tree is not None else None
         if node is not None:
@@ -403,12 +461,12 @@ def _type_error(context: Context) -> Features:
         )
 
     match = context.message_match(
-        r"^(\w+)\(\) missing (\d+) required (?:positional|keyword-only) arguments?: (.+)$"
+        r"^([\w.]+)\(\) missing (\d+) required (?:positional|keyword-only) arguments?: (.+)$"
     )
     if match:
         features.update(function=match[1], missing_count=int(match[2]), missing_args=match[3])
     match = context.message_match(
-        r"^(\w+)\(\) takes (\d+) positional arguments? but (\d+) (?:was|were) given"
+        r"^([\w.]+)\(\) takes (\d+) positional arguments? but (\d+) (?:was|were) given"
     )
     if match:
         features.update(function=match[1], takes=int(match[2]), given=int(match[3]))
@@ -428,7 +486,19 @@ def _type_error(context: Context) -> Features:
     match = context.message_match(r"^can't multiply sequence by non-int of type '(\w+)'")
     if match:
         features["factor_type"] = match[1]
-    features["none_operand"] = "NoneType" in (features.get("left_type"), features.get("right_type"))
+    features["none_operand"] = "NoneType" in (
+        features.get("left_type"),
+        features.get("right_type"),
+    ) or bool(context.message_match(r"passed to NoneType\.__format__"))
+    if tree is not None and "NoneType" in diagnostic.message:
+        on_line = [
+            n.id
+            for n in ast.walk(tree)
+            if isinstance(n, ast.Name)
+            and n.lineno == diagnostic.line
+            and isinstance(n.ctx, ast.Load)
+        ]
+        features.update(_from_inplace(tree, list(dict.fromkeys(on_line)), diagnostic.line))
     return features
 
 
@@ -502,19 +572,26 @@ def _attribute_error(context: Context) -> Features:
     if features.get("obj_type") == "NoneType" and context.tree is not None:
         node = node_at(context.tree, context.diagnostic, ast.Attribute)
         if node is not None and isinstance(node.value, ast.Name):
-            binding = latest_binding_before(context.tree, node.value.id, context.diagnostic.line)
-            value = _assigned_value(binding, context.tree) if binding else None
-            if (
-                isinstance(value, ast.Call)
-                and isinstance(value.func, ast.Attribute)
-                and value.func.attr in INPLACE_METHODS
-            ):
-                features.update(
-                    none_name=node.value.id,
-                    inplace_method=value.func.attr,
-                    inplace_line=binding.line,
-                )
+            features.update(_from_inplace(context.tree, [node.value.id], context.diagnostic.line))
     return features
+
+
+def _from_inplace(tree: ast.Module, names: list[str], line: int) -> Features:
+    """The first of ``names`` that was set to the `None` from `x = x.sort()`."""
+    for name in names:
+        binding = latest_binding_before(tree, name, line)
+        value = _assigned_value(binding, tree) if binding else None
+        if (
+            isinstance(value, ast.Call)
+            and isinstance(value.func, ast.Attribute)
+            and value.func.attr in INPLACE_METHODS
+        ):
+            return {
+                "none_name": name,
+                "inplace_method": value.func.attr,
+                "inplace_line": binding.line,
+            }
+    return {}
 
 
 @extractor("ModuleNotFoundError")

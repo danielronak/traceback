@@ -41,8 +41,10 @@ engine/      Python package `pymentor`: the shared core. Standard library only.
   tests/               test_cards.py self-tests every card from its examples
 curriculum/  course content: course.toml, lessons/NN-id.md, exercises/NN-id.toml
 app/         web app: Vite + TS + Preact + CodeMirror, Pyodide in a worker
+pipeline/    training data, benchmark builder and evaluation harness (M5)
+  corpus/              seed programs and their data card
 training/    model training (M6/M7, not started)
-benchmark/   frozen evaluation sets (M5, not started)
+benchmark/   frozen evaluation sets and results (v0)
 docs/        vision, architecture, plan
 ```
 
@@ -60,6 +62,16 @@ python -m pymentor check path/to/file.py --run --input 5   # try the engine
 python -m pymentor exercise curriculum/exercises/04-double.toml answer.py
 ```
 
+The data pipeline (M5), also from the repo root. Generate data and build
+benchmarks on Python 3.14, the version the app ships (D15):
+
+```bash
+uv pip install -e "pipeline[dev]"                    # once, after the engine
+pytest pipeline                                      # tests
+python -m pymentor_pipeline generate                 # data/generated/v1/ (not committed)
+python -m pymentor_pipeline evaluate --model template   # score a model on benchmark v0
+```
+
 The web app, from `app/` (Node 22):
 
 ```bash
@@ -71,8 +83,8 @@ npx playwright test            # end-to-end, builds first; set PLAYWRIGHT_CHROMI
                                # to a Chromium binary if Playwright's isn't installed
 ```
 
-CI (`.github/workflows/ci.yml`) runs all of the above, with the engine on Python
-3.13 and 3.14. Run the relevant ones locally before every commit.
+CI (`.github/workflows/ci.yml`) runs all of the above, with the engine and the
+pipeline on Python 3.13 and 3.14. Run the relevant ones locally before every commit.
 
 ## App conventions
 
@@ -90,8 +102,9 @@ CI (`.github/workflows/ci.yml`) runs all of the above, with the engine on Python
 
 - **Standard library only** in `engine/src/pymentor`. A test enforces this.
   Dev-only tools such as pytest are fine in `tests/`.
-- **Python 3.13** is the target, matching Pyodide (D15). Python's error messages
-  change between versions, and card `message` patterns depend on them.
+- **Python 3.14** is the target, matching Pyodide 314 (D15, D25), and 3.13 must
+  keep working for learners' own Python. Python's error messages change between
+  versions, and card `message` patterns depend on them.
 - **Positions:** lines are 1-based, columns 0-based, ends exclusive, the same
   as `ast` and `traceback`. Convert `SyntaxError.offset` (1-based) at the
   boundary.
@@ -191,7 +204,8 @@ Use `##` for sections (the lesson title is the heading above them).
 - The prompt format is defined once, in `pymentor.prompt`. Data generation,
   evaluation and inference all call it. Never duplicate it.
 - Use only permissively licensed models and data. Record every source and its
-  licence in a data or model card. Before training on a large model's outputs,
-  confirm its terms of use allow it.
+  licence in a data or model card.
+- Everything runs locally and free, including making training data: teachers
+  are open-weight models on this machine, never a hosted or paid API (D40).
 - Split train and evaluation data by seed program (D16). Never modify a frozen
   benchmark version; create a new version instead.

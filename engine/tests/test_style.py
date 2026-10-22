@@ -19,6 +19,7 @@ def test_flags_non_snake_case_variables_once_per_name():
 
 def test_allows_snake_case_constants_and_dunders():
     assert codes("total_score = 1\nMAX_SIZE = 10\nN = 3\n_private = 1\n") == []
+    assert codes("for _ in range(3):\n    pass\n") == []  # the throwaway name
     assert codes("class Dog:\n    def __init__(self):\n        pass\n") == []
 
 

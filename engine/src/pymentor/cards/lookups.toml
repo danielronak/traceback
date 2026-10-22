@@ -46,7 +46,7 @@ explain = ".get() gives back a default instead of stopping with a KeyError."
 [[card]]
 id = "none-from-inplace-method"
 title = "`{none_name}` is `None` because `.{inplace_method}()` returns `None`"
-match = { code = "AttributeError", when = { inplace_method = true } }
+match = { code = ["AttributeError", "TypeError"], when = { inplace_method = true } }
 priority = 10
 rule = "Methods such as `.sort()`, `.append()` and `.reverse()` change the object itself and give back `None`. Call them on their own line, without `=`."
 why = "Python makes in-place methods return `None` on purpose, so you can't mistake them for ones that make a new copy. On line {inplace_line}, `{none_name}` was set to that `None`. To get a new sorted list instead, use `sorted(...)`."
@@ -58,6 +58,7 @@ hints = [
 related = ["none-attribute"]
 examples = [
   { source = "numbers = [3, 1, 2]\nordered = numbers.sort()\nordered.append(4)\n" },
+  { source = "names = [\"Sam\", \"Ada\"]\nnames = names.sort()\nprint(len(names))\n" },
 ]
 
 [card.quiz]

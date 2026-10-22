@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymentor-pipeline"
+version = "0.1.0.dev0"
+description = "PyMentor's training-data pipeline, benchmark and evaluation harness."
+readme = "README.md"
+requires-python = ">=3.13"
+# Standard library plus the engine. Kept out of the engine package so the
+# browser never downloads it (D37).
+dependencies = ["pymentor"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+pymentor-pipeline = "pymentor_pipeline.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.uv.sources]
+pymentor = { path = "../engine", editable = true }
