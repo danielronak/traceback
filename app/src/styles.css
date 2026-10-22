@@ -1,0 +1,537 @@
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --text: #1c2128;
+  --muted: #59636e;
+  --border: #d1d9e0;
+  --accent: #1f6feb;
+  --accent-text: #ffffff;
+  --code-bg: #eff2f5;
+
+  /* The four kinds of mistake (vision.md). Never the only signal: every card has a text badge. */
+  --syntax: #cf222e;
+  --runtime: #bc4c00;
+  --style: #0969da;
+  --logic: #8250df;
+  --syntax-tint: #ffebe9;
+  --runtime-tint: #fff1e5;
+  --good: #1a7f37;
+
+  --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117;
+    --panel: #151b23;
+    --text: #e6edf3;
+    --muted: #9198a1;
+    --border: #3d444d;
+    --accent: #4493f8;
+    --accent-text: #0d1117;
+    --code-bg: #212830;
+    --syntax: #ff7b72;
+    --runtime: #f0883e;
+    --style: #58a6ff;
+    --logic: #bc8cff;
+    --syntax-tint: #3d1d20;
+    --runtime-tint: #3b2614;
+    --good: #3fb950;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 var(--sans);
+}
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+code,
+pre {
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+code {
+  background: var(--code-bg);
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+}
+
+/* --- layout ------------------------------------------------------------------ */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  font-size: 1.15rem;
+  margin: 0;
+}
+.modes {
+  display: flex;
+  gap: 0.3rem;
+}
+.modes button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.status {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 0.5rem 16px;
+  }
+  .status {
+    font-size: 0.75rem;
+  }
+  .wide-only {
+    display: none;
+  }
+}
+.status.ok::before {
+  content: "● ";
+  color: var(--good);
+}
+.status.bad {
+  color: var(--syntax);
+}
+.banner {
+  margin: 0;
+  padding: 0.6rem 1rem;
+}
+.banner.bad {
+  background: var(--syntax-tint);
+  color: var(--syntax);
+}
+
+.layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
+  gap: 1rem;
+  padding: 1rem;
+  align-items: start;
+}
+.layout.with-exercises {
+  grid-template-columns: 190px minmax(0, 1fr) minmax(300px, 400px);
+}
+@media (max-width: 900px) {
+  .layout,
+  .layout.with-exercises {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 1rem 16px;
+  }
+  /* On narrow screens: exercise list, then the task, then the code, then cards. */
+  .layout .side {
+    display: contents;
+  }
+  .layout .exercise-list { order: 0; }
+  .layout .exercise { order: 1; }
+  .layout .workspace { order: 2; }
+  .layout .cards,
+  .layout .cards-empty { order: 3; }
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.legend {
+  margin: 0 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.key::before {
+  content: "";
+  display: inline-block;
+  width: 1.2em;
+  height: 3px;
+  margin-right: 0.35em;
+  border-radius: 2px;
+  background: currentColor;
+  vertical-align: 0.25em;
+}
+.key-syntax::before { color: var(--syntax); }
+.key-runtime::before { color: var(--runtime); }
+.key-style::before { color: var(--style); }
+.key-logic::before { color: var(--logic); }
+
+/* --- editor ------------------------------------------------------------------ */
+
+.editor {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.editor .cm-editor {
+  min-height: 260px;
+  max-height: 60vh;
+  font-size: 15px;
+  background: var(--panel);
+  color: var(--text);
+}
+.editor .cm-scroller {
+  font-family: var(--mono);
+}
+.editor .cm-gutters {
+  background: var(--panel);
+  color: var(--muted);
+  border-right: 1px solid var(--border);
+}
+.editor .cm-activeLine,
+.editor .cm-activeLineGutter {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+.editor .cm-cursor {
+  border-left-color: var(--text);
+}
+.editor .pm-tint-syntax {
+  background: var(--syntax-tint);
+}
+.editor .pm-tint-runtime {
+  background: var(--runtime-tint);
+}
+/* Our own wavy underlines, one colour per kind of mistake. */
+.editor .cm-lintRange.pm-mark {
+  background-image: none;
+  text-decoration: underline wavy 1.5px;
+  text-underline-offset: 4px;
+  text-decoration-skip-ink: none;
+}
+.editor .cm-lintRange.pm-mark-syntax { text-decoration-color: var(--syntax); }
+.editor .cm-lintRange.pm-mark-runtime { text-decoration-color: var(--runtime); }
+.editor .cm-lintRange.pm-mark-style { text-decoration-color: var(--style); }
+.editor .cm-lintRange.pm-mark-logic { text-decoration-color: var(--logic); }
+/* Gutter markers: a dot in each kind's colour instead of CodeMirror's icons. */
+.editor .cm-lint-marker {
+  content: normal;
+  width: 0.6em;
+  height: 0.6em;
+  margin: 0.3em 0.2em;
+  border-radius: 50%;
+}
+.editor .cm-lint-marker-error { background: var(--syntax); }
+.editor .cm-lint-marker-warning { background: var(--runtime); }
+.editor .cm-lint-marker-hint { background: var(--logic); }
+.editor .cm-lint-marker-info { background: var(--style); }
+
+/* --- console ------------------------------------------------------------------ */
+
+.console {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.console-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.console-log {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  min-height: 4.5rem;
+  max-height: 14rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.console-note,
+.console-placeholder {
+  display: block;
+  color: var(--muted);
+  font-style: italic;
+}
+.console-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.console-input label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.console-input input {
+  flex: 1;
+  min-width: 8rem;
+  font: inherit;
+  font-family: var(--mono);
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+}
+.stop {
+  color: var(--syntax);
+  padding: 0.1rem 0.6rem;
+}
+
+/* --- exercises ------------------------------------------------------------------ */
+
+.exercise-list {
+  min-width: 0; /* let its list scroll sideways instead of widening the page */
+}
+.exercise-list ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.exercise-list button {
+  width: 100%;
+  text-align: left;
+  border-color: transparent;
+  background: transparent;
+}
+.exercise-list button[aria-current="true"] {
+  background: var(--panel);
+  border-color: var(--border);
+  font-weight: 600;
+}
+@media (max-width: 900px) {
+  .exercise-list ol {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .exercise-list button {
+    white-space: nowrap;
+  }
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+.exercise {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+.exercise h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+}
+.exercise h3 {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.prompt pre {
+  background: var(--code-bg);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+.tests {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.test {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.test-mark {
+  width: 1.1em;
+  flex: none;
+  font-weight: 700;
+  color: var(--muted);
+}
+.test-pass .test-mark { color: var(--good); }
+.test-fail .test-mark { color: var(--logic); }
+.test-actual {
+  color: var(--muted);
+}
+.passed {
+  margin: 0.75rem 0 0;
+  color: var(--good);
+  font-weight: 600;
+}
+
+/* --- cards ------------------------------------------------------------------ */
+
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.cards-empty {
+  margin: 0;
+  color: var(--muted);
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 8px;
+}
+.card-syntax { border-left-color: var(--syntax); }
+.card-runtime { border-left-color: var(--runtime); }
+.card-style { border-left-color: var(--style); }
+.card-logic { border-left-color: var(--logic); }
+.card-head {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0.6rem 0.75rem;
+}
+.card-title {
+  flex: 1;
+  font-weight: 600;
+  min-width: 10rem;
+}
+.card-line {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  color: #fff;
+}
+.badge-syntax { background: var(--syntax); }
+.badge-runtime { background: var(--runtime); }
+.badge-style { background: var(--style); }
+.badge-logic { background: var(--logic); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .badge {
+    color: #0d1117;
+  }
+}
+.card-body {
+  padding: 0 0.75rem 0.75rem;
+}
+.card-body p {
+  margin: 0 0 0.6rem;
+}
+.hints {
+  margin: 0 0 0.6rem;
+  padding-left: 1.3rem;
+}
+.hints li {
+  margin-bottom: 0.25rem;
+}
+.fix pre {
+  margin: 0;
+  padding: 0.3rem 0.5rem;
+  white-space: pre-wrap;
+  border-radius: 4px;
+}
+.fix-before {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.fix-after {
+  color: var(--good);
+  background: color-mix(in srgb, var(--good) 10%, transparent);
+}
+.fix-note {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0.3rem 0 0.6rem !important;
+}
+.why {
+  border-left: 3px solid var(--border);
+  padding-left: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.exceptions {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}

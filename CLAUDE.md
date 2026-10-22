@@ -35,12 +35,12 @@ Read these before making significant changes:
 ## Repository layout
 
 ```
-engine/      Python package `pymentor`: the shared core. Standard library only. (M1, M2 done)
+engine/      Python package `pymentor`: the shared core. Standard library only.
   src/pymentor/        engine modules (see docs/architecture.md for each)
   src/pymentor/cards/  the rule-card library (TOML), one file per topic
   tests/               test_cards.py self-tests every card from its examples
 curriculum/  course content: exercises/NN-id.toml (lessons come in M4)
-app/         web app (M3, not started)
+app/         web app: Vite + TS + Preact + CodeMirror, Pyodide in a worker
 training/    model training (M6/M7, not started)
 benchmark/   frozen evaluation sets (M5, not started)
 docs/        vision, architecture, plan
@@ -60,8 +60,31 @@ python -m pymentor check path/to/file.py --run --input 5   # try the engine
 python -m pymentor exercise curriculum/exercises/04-double.toml answer.py
 ```
 
-CI (`.github/workflows/ci.yml`) runs lint, the format check and the tests.
-Run them locally before every commit.
+The web app, from `app/` (Node 22):
+
+```bash
+npm ci                         # once
+npm run dev                    # dev server with the isolation headers input() needs
+npm run typecheck && npm test  # TypeScript and unit tests (Vitest)
+npm run test:engine            # card and curriculum self-check inside Pyodide
+npx playwright test            # end-to-end, builds first; set PLAYWRIGHT_CHROMIUM
+                               # to a Chromium binary if Playwright's isn't installed
+```
+
+CI (`.github/workflows/ci.yml`) runs all of the above, with the engine on Python
+3.13 and 3.14. Run the relevant ones locally before every commit.
+
+## App conventions
+
+- The engine's output shapes are mirrored in `app/src/engine/types.ts`. Change
+  both together.
+- Learner code only ever runs in the worker. The page never calls Python
+  directly; it goes through `EngineClient`.
+- No third-party requests at runtime: Pyodide is served from our own origin and
+  cached by the service worker. Don't add CDN links.
+- Severity is never shown by colour alone: keep the text badge on every card.
+- Test UI changes in a real browser (`npx playwright test`). Several M3 bugs
+  only showed up there.
 
 ## Engine conventions
 

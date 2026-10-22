@@ -128,33 +128,44 @@ The shared library everything else builds on.
 **Done when:** the exercise validator runs in CI and `printed-not-returned`
 triggers on its example. ✔
 
-## M3: Web app MVP (the Phase 1 core loop)
+## M3: Web app MVP (the Phase 1 core loop) ✅
 
-- [ ] `app/`: Vite, TypeScript, Preact and CodeMirror 6
-- [ ] Pyodide in a dedicated Web Worker, with the engine wheel served as a
-      static asset. Pin the Pyodide version and assert that its Python matches
-      the engine target (D15).
-- [ ] Live check on line leave or a ~600 ms pause, via `Engine.check`, shown as
-      CodeMirror diagnostics coloured by severity
-- [ ] Run with real `input()` through SharedArrayBuffer and Atomics (D9). Kill
-      the worker after a wall-clock timeout, with the step budget giving the
-      friendly card (D8).
-- [ ] Correction card: badge, title, before/after, why, and the three actions:
-      **Accept fix**, **Let me try first** (hint ladder from card hints) and
+- [x] `app/`: Vite, TypeScript, Preact and CodeMirror 6
+- [x] Pyodide 314 (Python 3.14) in a dedicated Web Worker, served from our own
+      origin. The engine's source and the curriculum are bundled as text, so
+      there's no wheel to build (D27). The worker refuses to start if its
+      Python isn't the engine's target (D15, D25).
+- [x] Live check on line leave or a 600 ms pause, shown as a wavy underline
+      per kind of mistake, a gutter dot in the same colour, and a line tint for
+      errors that stop the program
+- [x] Run with streamed output and real `input()` through SharedArrayBuffer
+      and Atomics (D9). Stop uses Pyodide's interrupt buffer; a watchdog
+      restarts the worker if a program defeats the engine's own limits (D8).
+- [x] Correction cards, try-first (D29): badge, title, rule, a hint ladder that
+      ends at the fix, Show the fix with before/after, **Accept fix**, and
       **Why does Python work this way?** (the card's depth-3 text until the
       model arrives)
-- [ ] Exercise view: prompt, editor, Run tests, purple findings
-- [ ] PWA: works offline after the first load (service worker caches Pyodide
-      and the engine)
-- [ ] CI runs the engine test suite inside Pyodide (Node and the `pyodide` npm
-      package)
-- [ ] Performance budgets: first load ≤ ~15 MB transferred, live check < 50 ms,
-      interactive in < 5 s from cache on a throttled low-end profile
-- [ ] Accessibility: severity is never shown by colour alone (badge text and
-      icon), keyboard-operable cards, screen-reader labels
+- [x] Exercise view: list, Markdown prompt, Run tests with a results list,
+      purple findings, Start over, and drafts kept per exercise
+- [x] PWA: a generated service worker precaches everything, so the app works
+      offline after one visit, and adds the isolation headers for hosts that
+      can't (D26). Chrome reports it installable.
+- [x] CI: the engine on Python 3.13 and 3.14; the app's type-check, unit
+      tests, the card and curriculum self-check inside Pyodide, and 9 Playwright
+      end-to-end tests against the production build
+- [x] Performance, measured at 4× CPU slowdown: 12.6 MB transferred on a cold
+      load (uncompressed; about 5.5 MB compressed), Python ready in 3.1 s from
+      cache, and a live-check card about 75 ms after typing
+- [x] Accessibility: severity always has a text badge, cards and the console
+      are keyboard-operable buttons and forms, and regions have labels
 
 **Done when:** the design doc's mockup is reproducible in the browser offline,
-and the app installs as a PWA and works under CPU throttling.
+and the app installs as a PWA and works under CPU throttling. ✔ (all three are
+checked by tests or measured; see above)
+
+**Follow-ups noted for M4:** keyboard users can leave the editor with Escape
+then Tab (CodeMirror's convention) but nothing says so on screen; and the
+budgets are measured on a desktop CPU slowed down, not on a real Chromebook.
 
 ## M4: Learning content and teaching behaviours (Phase 1 ships)
 

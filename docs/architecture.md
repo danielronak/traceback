@@ -31,10 +31,15 @@ engine/        Python package `pymentor`, the shared core. Standard library only
     prompt.py      the model input format (M5), shared by training and inference
     grounding.py   the faithfulness checker for model output (M5)
     exercises.py   exercise format, loader and test runner
+    selfcheck.py   card and curriculum checks, run under pytest and inside Pyodide
     data/          bug injection and the training-data generator (M5)
   tests/
 curriculum/    Course content: exercises/*.toml now, lessons in M4
-app/           Web app (M3): Vite + TypeScript, CodeMirror 6, Pyodide in a Web Worker
+app/           Web app: Vite + TypeScript + Preact, CodeMirror 6, Pyodide in a Web Worker
+  src/engine/    worker (Pyodide + engine), client (input, Stop, watchdog), types
+  src/editor/    CodeMirror setup and position mapping
+  src/cards/     correction cards and the hint ladder
+  src/sw.template.js  the service worker, filled in at build time
 training/      Model training (M6, M7): tokenizer, pretraining, SFT, export. PyTorch.
 benchmark/     Frozen, versioned evaluation sets (M5)
 extension/     VS Code extension (M9)
@@ -206,8 +211,9 @@ defeats the trace hook with a bare `except:`. *Accepted.*
 **D9. `input()` in the browser uses SharedArrayBuffer and Atomics.**
 Beginner programs use `input()` constantly, and Pyodide needs synchronous stdin
 from the worker. That requires cross-origin isolation (COOP/COEP headers), so
-we host on a static host that allows custom headers (Cloudflare Pages), with
-`coi-serviceworker` as a fallback. *Proposed. Validated in M3.*
+we host on a static host that allows custom headers (Cloudflare Pages), and our
+own service worker adds the headers on hosts that can't (D26). *Accepted.
+Validated in M3, including Stop while a program waits for input.*
 
 **D10. The prompt format is defined once, in the engine.** `pymentor.prompt`
 builds model inputs for data generation, evaluation and inference alike. If it
@@ -240,10 +246,11 @@ fine-tuning, export and evaluation code, while the pretraining loop (bf16,
 `torch.compile`, packing, checkpointing) is written by hand as the portfolio
 piece. *Proposed.*
 
-**D15. Target Python 3.13, pinned to Pyodide's version.** Error messages
+**D15. Target the Python version Pyodide ships.** Error messages
 change between Python versions, and card `message` patterns depend on them. The
-engine targets the CPython version that Pyodide ships, and CI tests that
-version. *Accepted. Re-check when upgrading Pyodide.*
+engine targets the CPython that the app's Pyodide ships (3.14 since D25), CI
+tests that version, and the card library is also self-checked inside Pyodide
+itself. *Accepted. Re-check when upgrading Pyodide.*
 
 **D16. Benchmark and training data are split by seed program.** Mutations of
 one correct program never appear in both training and evaluation, which
@@ -299,3 +306,41 @@ are never shown. *Accepted.*
 browser has no subprocesses, so this is the path that ships. If the data
 pipeline (M5) runs exercises in bulk, it will need a subprocess wrapper like
 `isolated.py`. *Accepted. Revisit in M5.*
+
+**D25. ⚑ The browser ships Python 3.14 (Pyodide 314), not 3.13.** Pyodide
+moved to Python-version numbering. The 314 line is current; 0.29 (Python 3.13)
+is the older one. The whole engine suite passed on 3.14 unchanged. The engine
+still supports 3.13 (`requires-python >= 3.13`), since the VS Code extension
+will run on learners' own Python, so CI tests both. *Accepted.*
+
+**D26. Our own service worker, generated at build time, instead of a PWA
+plugin.** It precaches every built file plus Pyodide, adds the isolation
+headers itself (so `input()` works on hosts that can't set them, after one
+automatic reload), and activates on the next visit rather than mid-session. It
+matches cached files ignoring `Vary`: module scripts carry an `Origin` header
+the precache requests didn't, and without that, offline loads fail. About 60
+lines that we fully understand, instead of a dependency. *Accepted.*
+
+**D27. The engine's source is bundled into the worker as text, not built as
+a wheel.** Vite imports `engine/src/pymentor/**` as raw strings and the worker
+writes them into Pyodide's file system. There's no build step to forget, the
+browser runs exactly the code the tests check, and edits reach the dev server
+instantly. The curriculum is bundled the same way and parsed by the engine, so
+TOML has one parser. *Accepted.*
+
+**D28. One worker does both live checks and runs.** Two Pyodide instances
+would double memory on low-end devices. While a program runs (or waits for
+input) live checks pause, and the app re-checks as soon as the run ends.
+*Accepted.*
+
+**D29. ⚑ Cards are try-first: the fix is hidden until asked for.** The design
+doc's mockup shows the fix straight away, but its own principle says hints come
+before answers. A card opens with the problem and the rule. The hint ladder's
+last rung is the fix, and "Show the fix" is always one click away. Teachers may
+want a setting for this (M4). *Accepted.*
+
+**D30. Output is batched twice.** A loop printing thousands of lines used to
+send a message per write and re-render per message, freezing the page. The
+worker flushes every 50 ms or 4 KB (and before `input()` waits, and at the
+end), and the page renders at most once per frame, flushing when a run
+finishes so the last output always precedes the closing note. *Accepted.*
