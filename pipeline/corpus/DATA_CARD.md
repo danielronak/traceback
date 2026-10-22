@@ -10,8 +10,8 @@ make training and evaluation examples (M5). It's loaded by
 | --- | --- | --- |
 | Standalone programs | 60 | `pipeline/corpus/programs/*.py` |
 | Exercise reference solutions, with the exercises' tests | 18 | `curriculum/exercises/*.toml` |
-| Runnable lesson snippets (deliberate mistakes excluded) | 25 | `curriculum/lessons/*.md` |
-| **Total** | **103** | |
+| Runnable lesson snippets (deliberate mistakes excluded) | 28 | `curriculum/lessons/*.md` |
+| **Total** | **106** | |
 
 The programs cover the course's topics: printing, variables and `input()`,
 numbers and text, functions, decisions, loops, strings, lists, dictionaries,
@@ -39,7 +39,7 @@ CC0, CC BY) may be used (CLAUDE.md, "Model and training").
 
 ## Known limitations
 
-- 103 seeds written by one author: the style is consistent, but narrower than
+- 106 seeds written by one author: the style is consistent, but narrower than
   real learners' code. Phase 1's opt-in feedback (M4) should broaden the
   benchmark with real beginner mistakes (benchmark v1).
 - No programs use files, networking or third-party libraries, matching what
