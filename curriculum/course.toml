@@ -1,0 +1,40 @@
+# The beginner course: units of lessons and exercises, in learning order.
+# Every lesson and exercise must appear exactly once (checked in CI).
+title = "Python from scratch"
+
+[[unit]]
+id = "first-steps"
+title = "First steps"
+items = [
+  "lesson:printing", "exercise:hello-world",
+  "lesson:variables-and-input", "exercise:greet-by-name",
+  "lesson:numbers-and-text", "exercise:add-two-numbers",
+]
+
+[[unit]]
+id = "functions"
+title = "Functions"
+items = ["lesson:functions", "exercise:double", "exercise:rectangle-area"]
+
+[[unit]]
+id = "decisions"
+title = "Decisions"
+items = ["lesson:decisions", "exercise:is-even", "exercise:bigger", "exercise:grade", "exercise:fizzbuzz"]
+
+[[unit]]
+id = "loops"
+title = "Loops"
+items = ["lesson:loops", "exercise:countdown", "exercise:sum-list", "exercise:times-table"]
+
+[[unit]]
+id = "text"
+title = "Working with text"
+items = ["lesson:text-as-a-sequence", "exercise:count-vowels", "exercise:reverse-word"]
+
+[[unit]]
+id = "collections"
+title = "Lists and dictionaries"
+items = [
+  "lesson:lists", "exercise:average", "exercise:first-and-last", "exercise:largest-index",
+  "lesson:dictionaries", "exercise:word-lengths",
+]

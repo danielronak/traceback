@@ -17,6 +17,7 @@ from .facts import Finding, Severity
 
 if TYPE_CHECKING:
     from .cards import Card, Example
+    from .course import Course
     from .engine import Engine
 
 
@@ -84,4 +85,28 @@ def check_exercise(engine: Engine, exercise: Exercise) -> list[str]:
     elif not started.findings or started.findings[0].card is None:
         first = started.findings[0] if started.findings else None
         problems.append(f"{exercise.id}: the starter's first finding has no card: {label(first)}")
+    return problems
+
+
+def check_course(engine: Engine, course: Course) -> list[str]:
+    """Lessons name real cards, ordinary snippets run cleanly, and each broken
+    snippet is taught by exactly the card it names (which the lesson lists)."""
+    problems = []
+    for lesson in course.lessons.values():
+        for card_id in lesson.teaches:
+            if card_id not in engine.cards.by_id:
+                problems.append(f"{lesson.id}: teaches unknown card '{card_id}'")
+        for number, snippet in enumerate(lesson.snippets, start=1):
+            where = f"{lesson.id} snippet {number}"
+            report = engine.run(snippet.code, list(snippet.inputs))
+            found = [label(f) for f in report.findings]
+            if snippet.broken is None:
+                if found:
+                    problems.append(f"{where}: should run cleanly but has {found}")
+            elif not found or found[0] != snippet.broken:
+                problems.append(f"{where}: should be taught by '{snippet.broken}' but got {found}")
+            elif snippet.broken not in lesson.teaches:
+                problems.append(
+                    f"{where}: shows '{snippet.broken}', so the lesson should list it in teaches"
+                )
     return problems

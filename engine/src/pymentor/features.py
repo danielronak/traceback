@@ -228,7 +228,34 @@ def _syntax(context: Context) -> Features:
         features["expected_closer"] = {"(": ")", "[": "]", "{": "}"}[match[2]]
     if context.diagnostic.message == "invalid syntax":
         features["keyword_as_name"] = _keyword_assigned(context)
+        word = features.get("keyword")
+        features["keyword_typo"] = _keyword_typo(word) if word else None
+        # A valid else/elif never errors on its own line, so one that does
+        # has no if (or loop, or try) for it to belong to.
+        features["orphan_else"] = word in ("else", "elif") and context.diagnostic.col == 0
+    match = context.message_match(r"^cannot assign to (literal|function call|expression)")
+    if match:
+        features["assign_target"] = match[1]
     return features
+
+
+# Keywords that start a statement, the ones a typo at the start of a line is
+# most likely to be.
+STATEMENT_KEYWORDS = (
+    "if", "elif", "else", "for", "while", "def", "class", "return", "import",
+    "from", "try", "except", "finally", "with", "break", "continue", "pass",
+)  # fmt: skip
+
+
+def _keyword_typo(word: str) -> str | None:
+    """`whlie`, `retrun`, `If`: a misspelled statement keyword."""
+    if word in keyword.kwlist or word in PUBLIC_BUILTINS:
+        return None
+    lowered = word.lower()
+    if lowered in STATEMENT_KEYWORDS:
+        return lowered  # `If`, `Def`: right word, wrong capital
+    # Short keywords can't be told apart from ordinary names, so be strict.
+    return closest(word, frozenset(k for k in STATEMENT_KEYWORDS if len(k) >= 4), cutoff=0.8)
 
 
 def _keyword_assigned(context: Context) -> str | None:
@@ -380,12 +407,34 @@ def _type_error(context: Context) -> Features:
     )
     if match:
         features.update(function=match[1], missing_count=int(match[2]), missing_args=match[3])
+    match = context.message_match(
+        r"^(\w+)\(\) takes (\d+) positional arguments? but (\d+) (?:was|were) given"
+    )
+    if match:
+        features.update(function=match[1], takes=int(match[2]), given=int(match[3]))
+    match = context.message_match(
+        r"^'(.+?)' not supported between instances of '(\w+)' and '(\w+)'"
+    )
+    if match:
+        features.update(operator=match[1], left_type=match[2], right_type=match[3])
+        if tree is not None:
+            features.update(_from_input(tree, diagnostic))
+    match = context.message_match(r"^object of type '(\w+)' has no len\(\)")
+    if match:
+        features["obj_type"] = match[1]
+    match = context.message_match(r"^list indices must be integers or slices, not (\w+)")
+    if match:
+        features["index_type"] = match[1]
+    match = context.message_match(r"^can't multiply sequence by non-int of type '(\w+)'")
+    if match:
+        features["factor_type"] = match[1]
+    features["none_operand"] = "NoneType" in (features.get("left_type"), features.get("right_type"))
     return features
 
 
 def _from_input(tree: ast.Module, diagnostic: Diagnostic) -> Features:
     """Is one side of this operation a variable that holds text from input()?"""
-    operation = node_at(tree, diagnostic, ast.BinOp, ast.AugAssign)
+    operation = node_at(tree, diagnostic, ast.BinOp, ast.AugAssign, ast.Compare)
     if operation is None:
         return {}
     # Search the whole expression: in `"Next: " + age + 1` the failing `+` is
@@ -413,6 +462,16 @@ def _index_error(context: Context) -> Features:
             features["index_text"] = ast.get_source_segment(context.source, node.slice)
             features["container_text"] = ast.get_source_segment(context.source, node.value)
     return features
+
+
+@extractor("ValueError")
+def _unpacking(context: Context) -> Features:
+    match = context.message_match(
+        r"^(too many|not enough) values to unpack \(expected (\d+)(?:, got (\d+))?\)"
+    )
+    if not match:
+        return {}
+    return {"unpack": "too many" if match[1] == "too many" else "too few", "names": int(match[2])}
 
 
 @extractor("ValueError")

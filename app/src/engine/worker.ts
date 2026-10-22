@@ -56,7 +56,7 @@ async function start(init: InitMessage) {
   const module = pyodide.globals.get("dict")();
   pyodide.runPython(bootstrap, { globals: module });
   api = Object.fromEntries(
-    ["check", "run", "load_exercises", "run_exercise"].map((name) => [name, module.get(name)]),
+    ["check", "run", "load_curriculum", "run_exercise"].map((name) => [name, module.get(name)]),
   );
 
   if (init.control && init.data && init.interrupt) {
@@ -64,8 +64,8 @@ async function start(init: InitMessage) {
     data = new Uint8Array(init.data);
     pyodide.setInterruptBuffer(new Uint8Array(init.interrupt));
   }
-  const exercises = api.load_exercises(JSON.stringify(init.exercises));
-  post({ type: "ready", pythonVersion: version, exercises, crossOriginIsolated: control !== undefined });
+  const curriculum = api.load_curriculum(JSON.stringify(init.curriculum));
+  post({ type: "ready", pythonVersion: version, curriculum, crossOriginIsolated: control !== undefined });
 }
 
 // Called from Python's input(): block this worker until the page answers.

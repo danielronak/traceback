@@ -4,9 +4,17 @@ export interface CardState {
   hints: number; // how many hints are showing
   fix: boolean; // the fix has been revealed
   why: boolean; // "Why does Python work this way?" is open
+  wrong: number[]; // quiz choices already tried and wrong
+  answered: boolean; // the quiz was answered correctly
 }
 
-export const FRESH: CardState = { hints: 0, fix: false, why: false };
+export const FRESH: CardState = { hints: 0, fix: false, why: false, wrong: [], answered: false };
+
+/** Answer the card's quiz. A wrong choice is remembered so it can be greyed out. */
+export function answerQuiz(state: CardState, choice: number, correct: number): CardState {
+  if (choice === correct) return { ...state, answered: true };
+  return state.wrong.includes(choice) ? state : { ...state, wrong: [...state.wrong, choice] };
+}
 
 export type CardAction = "hint" | "fix" | "why";
 

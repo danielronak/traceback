@@ -14,7 +14,7 @@ function* files(dir) {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) yield* files(path);
-    else if (/\.(py|toml)$/.test(name)) yield path;
+    else if (/\.(py|toml|md)$/.test(name)) yield path;
   }
 }
 
@@ -26,7 +26,7 @@ if (version !== EXPECTED_PYTHON) {
 }
 for (const [source, target] of [
   [join(repo, "engine/src/pymentor"), "/engine/pymentor"],
-  [join(repo, "curriculum/exercises"), "/curriculum/exercises"],
+  [join(repo, "curriculum"), "/curriculum"],
 ]) {
   for (const path of files(source)) {
     const destination = join(target, relative(source, path));
@@ -40,23 +40,25 @@ const result = JSON.parse(
 import json, sys
 sys.path.insert(0, "/engine")
 from pymentor import Engine
-from pymentor.exercises import load_exercises
-from pymentor.selfcheck import check_exercise, check_library
+from pymentor.course import load_course
+from pymentor.selfcheck import check_course, check_exercise, check_library
 
 engine = Engine(step_limit=20_000)
-exercises = load_exercises("/curriculum/exercises")
-problems = check_library(engine)
-for exercise in exercises:
+course = load_course("/curriculum")
+problems = check_library(engine) + check_course(engine, course)
+for exercise in course.exercises.values():
     problems += check_exercise(engine, exercise)
 examples = sum(len(card.examples) for card in engine.cards)
-json.dumps({"cards": len(engine.cards), "examples": examples,
-            "exercises": len(exercises), "problems": problems})
+snippets = sum(len(lesson.snippets) for lesson in course.lessons.values())
+json.dumps({"cards": len(engine.cards), "examples": examples, "lessons": len(course.lessons),
+            "snippets": snippets, "exercises": len(course.exercises), "problems": problems})
 `),
 );
 
 console.log(
   `Python ${version} (Pyodide ${pyodide.version}): ${result.cards} cards, ` +
-    `${result.examples} examples, ${result.exercises} exercises checked.`,
+    `${result.examples} examples, ${result.lessons} lessons (${result.snippets} snippets), ` +
+    `${result.exercises} exercises checked.`,
 );
 for (const problem of result.problems) console.error(`  FAIL ${problem}`);
 process.exit(result.problems.length ? 1 : 0);

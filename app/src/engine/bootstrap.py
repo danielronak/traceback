@@ -6,6 +6,7 @@ import sys
 sys.path.insert(0, "/engine")
 
 from pymentor import Engine, Report
+from pymentor.course import parse_course, parse_lesson
 from pymentor.exercises import parse_exercise
 
 _engine = Engine()
@@ -30,13 +31,20 @@ def run(source, ask, emit):
     return json.dumps(report.to_dict())
 
 
-def load_exercises(items_json):
-    loaded = []
-    for origin, text in json.loads(items_json):
-        exercise = parse_exercise(text, origin)
-        _exercises[exercise.id] = exercise
-        loaded.append(exercise.to_dict())
-    return json.dumps(loaded)
+def load_curriculum(files_json):
+    files = json.loads(files_json)
+
+    def under(folder):
+        return [(path, text) for path, text in files if path.startswith(f"curriculum/{folder}/")]
+
+    lessons = [parse_lesson(text, path) for path, text in under("lessons")]
+    exercises = [parse_exercise(text, path) for path, text in under("exercises")]
+    course_text = next(text for path, text in files if path == "curriculum/course.toml")
+    course = parse_course(course_text, lessons, exercises)
+    _exercises.update(course.exercises)
+    return json.dumps(
+        {"course": course.to_dict(), "exercises": [e.to_dict() for e in course.exercises.values()]}
+    )
 
 
 def run_exercise(exercise_id, source):

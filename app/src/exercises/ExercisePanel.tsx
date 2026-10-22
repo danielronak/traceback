@@ -8,9 +8,10 @@ interface Props {
   exercise: Exercise;
   results: TestResult[] | null;
   passed: boolean;
+  next: { title: string; open(): void } | null;
 }
 
-export function ExercisePanel({ exercise, results, passed }: Props) {
+export function ExercisePanel({ exercise, results, passed, next }: Props) {
   // Prompts come from our own curriculum files, not from users.
   const prompt = useMemo(() => marked.parse(exercise.prompt, { async: false }) as string, [exercise]);
   return (
@@ -52,7 +53,16 @@ export function ExercisePanel({ exercise, results, passed }: Props) {
           );
         })}
       </ul>
-      {passed && <p class="passed" role="status">All tests pass. Well done!</p>}
+      {passed && (
+        <div class="passed" role="status">
+          <p>All tests pass. Well done!</p>
+          {next && (
+            <button type="button" class="primary" onClick={next.open}>
+              Next: {next.title}
+            </button>
+          )}
+        </div>
+      )}
     </section>
   );
 }

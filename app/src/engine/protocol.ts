@@ -6,7 +6,7 @@ export type Request =
   | { id: number; type: "exercise"; exerciseId: string; source: string };
 
 export type WorkerMessage =
-  | { type: "ready"; pythonVersion: string; exercises: string; crossOriginIsolated: boolean }
+  | { type: "ready"; pythonVersion: string; curriculum: string; crossOriginIsolated: boolean }
   | { type: "failed"; message: string }
   | { type: "result"; id: number; json: string }
   | { type: "error"; id: number; message: string }
@@ -16,7 +16,7 @@ export type WorkerMessage =
 
 export interface InitMessage {
   type: "init";
-  exercises: [origin: string, text: string][];
+  curriculum: [path: string, text: string][]; // curriculum/course.toml, lessons/*.md, exercises/*.toml
   // Shared memory for blocking input() and for Stop (absent without isolation).
   control?: SharedArrayBuffer; // Int32 [state, byteLength]
   data?: SharedArrayBuffer; // UTF-8 bytes of the answer

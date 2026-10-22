@@ -14,6 +14,13 @@ export interface Diagnostic {
   data: Record<string, unknown>;
 }
 
+export interface Quiz {
+  question: string;
+  choices: string[];
+  answer: number; // index into choices
+  explain: string;
+}
+
 export interface Card {
   id: string;
   title: string;
@@ -22,6 +29,7 @@ export interface Card {
   hints: string[];
   exceptions: string;
   related: string[];
+  quiz: Quiz | null;
 }
 
 export interface Fix {
@@ -75,4 +83,37 @@ export interface ExerciseReport {
   passed: boolean;
   findings: Finding[];
   results: TestResult[];
+}
+
+export interface LessonPart {
+  kind: "markdown" | "code";
+  text?: string; // markdown
+  code?: string; // code
+  inputs?: string[];
+  broken?: string | null; // the card a deliberate mistake should trigger
+}
+
+export interface Lesson {
+  id: string;
+  title: string;
+  teaches: string[];
+  parts: LessonPart[];
+}
+
+export interface CourseItem {
+  kind: "lesson" | "exercise";
+  id: string;
+  title: string;
+}
+
+export interface Unit {
+  id: string;
+  title: string;
+  items: CourseItem[];
+}
+
+export interface Course {
+  title: string;
+  units: Unit[];
+  lessons: Record<string, Lesson>;
 }

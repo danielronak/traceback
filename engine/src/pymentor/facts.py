@@ -70,6 +70,16 @@ class Fix:
 
 
 @dataclass(frozen=True)
+class Quiz:
+    """A question about a card's rule, for when a mistake keeps coming back."""
+
+    question: str
+    choices: tuple[str, ...]
+    answer: int  # index into choices
+    explain: str
+
+
+@dataclass(frozen=True)
 class RenderedCard:
     """A rule card with its placeholders filled in for one diagnostic."""
 
@@ -80,6 +90,7 @@ class RenderedCard:
     hints: tuple[str, ...]
     exceptions: str = ""
     related: tuple[str, ...] = ()
+    quiz: Quiz | None = None
 
 
 @dataclass(frozen=True)

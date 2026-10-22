@@ -22,13 +22,14 @@ from pathlib import Path
 from typing import Any
 
 from .exercises import ExerciseTest, parse_tests
-from .facts import Diagnostic, RenderedCard
+from .facts import Diagnostic, Quiz, RenderedCard
 from .fixes import has_generator
 
 CARD_FIELDS = {
     "id", "title", "match", "priority", "rule", "why", "hints", "fix",
-    "exceptions", "related", "examples",
+    "exceptions", "related", "examples", "quiz",
 }  # fmt: skip
+QUIZ_FIELDS = {"question", "choices", "answer", "explain"}
 MATCH_FIELDS = {"code", "message", "when"}
 EXAMPLE_FIELDS = {"source", "inputs", "after", "no_fix", "tests"}
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
@@ -66,6 +67,7 @@ class Card:
     related: tuple[str, ...]
     examples: tuple[Example, ...]
     origin: str  # file the card came from, for error messages
+    quiz: Quiz | None = None
 
     @property
     def specificity(self) -> tuple[int, int]:
@@ -88,6 +90,7 @@ class Card:
             hints=tuple(_fill(h, facts, self.id) for h in self.hints),
             exceptions=_fill(self.exceptions, facts, self.id),
             related=self.related,
+            quiz=self.quiz,  # about the rule in general, so not templated
         )
 
     def placeholders(self) -> set[str]:
@@ -244,6 +247,7 @@ def _parse_card(entry: dict[str, Any], origin: str) -> Card:
         raise CardError(f"{where}: unknown fix generator '{fix}'")
 
     return Card(
+        quiz=_parse_quiz(entry["quiz"], where) if "quiz" in entry else None,
         id=card_id,
         title=need("title", str),
         codes=codes,
@@ -259,3 +263,16 @@ def _parse_card(entry: dict[str, Any], origin: str) -> Card:
         examples=tuple(examples),
         origin=origin,
     )
+
+
+def _parse_quiz(quiz: Any, where: str) -> Quiz:
+    if not isinstance(quiz, dict) or set(quiz) != QUIZ_FIELDS:
+        raise CardError(f"{where}: a quiz has exactly {sorted(QUIZ_FIELDS)}")
+    choices = quiz["choices"]
+    if not isinstance(choices, list) or not 2 <= len(choices) <= 4:
+        raise CardError(f"{where}: a quiz has 2 to 4 choices")
+    if len(set(choices)) != len(choices) or not all(isinstance(c, str) for c in choices):
+        raise CardError(f"{where}: quiz choices must be distinct strings")
+    if not isinstance(quiz["answer"], int) or not 0 <= quiz["answer"] < len(choices):
+        raise CardError(f"{where}: quiz 'answer' must be the index of one of the choices")
+    return Quiz(quiz["question"], tuple(choices), quiz["answer"], quiz["explain"])

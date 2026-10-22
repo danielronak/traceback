@@ -15,6 +15,12 @@ examples = [
   { source = "count = 0\nprint(10 / count)\n" },
 ]
 
+[card.quiz]
+question = "What does Python do with `10 / 0`?"
+choices = ["Gives 0", "Gives infinity", "Stops with a ZeroDivisionError"]
+answer = 2
+explain = "Dividing by zero has no answer, so Python stops. Check the number isn't 0 first."
+
 [[card]]
 id = "recursion-limit"
 title = "`{function}()` keeps calling itself and never stops"
@@ -46,6 +52,12 @@ examples = [
   { source = "count = 0\nwhile count < 5:\n    print(count)\n" },
 ]
 
+[card.quiz]
+question = "`while count < 5:` will stop only if..."
+choices = ["the loop prints something", "something inside the loop makes count 5 or more", "you wait long enough"]
+answer = 1
+explain = "The condition is checked before every repeat, so something inside the loop must change it."
+
 [[card]]
 id = "infinite-loop"
 title = "The loop on line {loop_line} doesn't seem to end"
@@ -74,4 +86,19 @@ hints = [
 ]
 examples = [
   { source = "a = input()\nb = input()\n", inputs = ["1"] },
+]
+
+[[card]]
+id = "changed-while-looping"
+title = "The dictionary changed while the loop was going through it"
+match = { code = "RuntimeError", message = "changed size during iteration" }
+rule = "Don't add or remove items from a dictionary (or set) while a `for` loop is going through it. Loop over a copy instead: `for key in list(ages):`."
+why = "The loop keeps its place by position, and adding or removing items reshuffles the positions, so the loop could skip items or see some twice. Python stops rather than give an unreliable result."
+hints = [
+  "Which loop on or before line {line} goes through the dictionary?",
+  "Inside that loop, something adds or removes items from the same dictionary.",
+  "Loop over a copy, `list(the_dict)`, or collect the changes and make them after the loop.",
+]
+examples = [
+  { source = "ages = {'Ada': 36, 'Bo': 7}\nfor name in ages:\n    if ages[name] < 10:\n        del ages[name]\n" },
 ]

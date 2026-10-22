@@ -29,7 +29,56 @@ SHADOWED_BUILTINS = frozenset(
 def check_style(tree: ast.Module) -> list[Diagnostic]:
     checker = _StyleChecker()
     checker.visit(tree)
+    checker.found.extend(_missing_f_prefix(tree))
     return sorted(checker.found, key=lambda d: (d.line, d.col))
+
+
+PLACEHOLDER = re.compile(r"\{([A-Za-z_]\w*)\}")
+
+
+def _missing_f_prefix(tree: ast.Module) -> list[Diagnostic]:
+    """`print("Hello {name}")` where `name` is a variable: probably meant an f-string."""
+    exempt: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.JoinedStr):  # already an f-string
+            exempt.update(id(value) for value in node.values)
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in ("format", "format_map")
+        ):
+            exempt.add(id(node.func.value))  # "{name}".format(name=...)
+        elif isinstance(node, ast.Module | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            first = node.body[0] if node.body else None
+            if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
+                exempt.add(id(first.value))  # docstrings
+    names = {
+        n.id for n in ast.walk(tree) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)
+    }
+    names |= {a.arg for a in ast.walk(tree) if isinstance(a, ast.arg)}
+    found = []
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and id(node) not in exempt
+            and node.lineno == node.end_lineno
+        ):
+            used = [n for n in PLACEHOLDER.findall(node.value) if n in names]
+            if used:
+                found.append(
+                    Diagnostic(
+                        Severity.STYLE,
+                        "fstring-missing-f",
+                        f"String contains {{{used[0]}}} but isn't an f-string",
+                        line=node.lineno,
+                        col=node.col_offset,
+                        end_line=node.end_lineno,
+                        end_col=node.end_col_offset,
+                        data={"name": used[0]},
+                    )
+                )
+    return found
 
 
 def to_snake_case(name: str) -> str:
