@@ -18,6 +18,12 @@ examples = [
   { source = "n = input()\ntotal = 10 * 2 + n\n", inputs = ["3"], after = "n = int(input())" },
 ]
 
+[card.quiz]
+question = "Someone types 7 when your program calls `input()`. What do you get?"
+choices = ["The number 7", "The text \"7\"", "Nothing until you press Run again"]
+answer = 1
+explain = "input() always gives back text. Convert it with int() before doing maths."
+
 [[card]]
 id = "str-plus-int"
 title = "`+` can't join text with a value of type `{right_type}` (line {line})"
@@ -34,6 +40,12 @@ related = ["input-is-string"]
 examples = [
   { source = "age = 15\nprint(\"Age: \" + age)\n", after = "print(\"Age: \" + str(age))" },
 ]
+
+[card.quiz]
+question = "What happens with `\"Age: \" + 15`?"
+choices = ["It prints Age: 15", "Python stops with a TypeError", "It gives 15"]
+answer = 1
+explain = "`+` can't join text and a number. Use `str(15)` or an f-string: `f\"Age: {age}\"`."
 
 [[card]]
 id = "called-shadowed-builtin"
@@ -113,6 +125,12 @@ examples = [
   { source = "for i in 5:\n    print(i)\n", after = "for i in range(5):" },
   { source = "names = [\"Ana\", \"Bo\"]\nfor i in len(names):\n    print(names[i])\n", after = "for i in range(len(names)):" },
 ]
+
+[card.quiz]
+question = "How do you repeat something 5 times with a for loop?"
+choices = ["for i in 5:", "for i in range(5):", "for 5 times:"]
+answer = 1
+explain = "A for loop goes through a sequence. range(5) gives the numbers 0 to 4."
 
 [[card]]
 id = "str-immutable"

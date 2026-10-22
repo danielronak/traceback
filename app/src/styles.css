@@ -758,3 +758,32 @@ button.link:hover {
   :root:not([data-theme="light"]) .tok-variableName.tok-definition,
   :root:not([data-theme="light"]) .tok-function { color: #d2a8ff; }
 }
+
+/* --- quizzes ------------------------------------------------------------------ */
+
+.quiz-intro {
+  color: var(--logic);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.quiz-question {
+  font-weight: 600;
+}
+.quiz-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.quiz-choices button {
+  text-align: left;
+}
+.quiz-choices button:disabled {
+  text-decoration: line-through;
+}
+.quiz-feedback {
+  color: var(--runtime);
+}
+.quiz-right {
+  color: var(--good);
+}

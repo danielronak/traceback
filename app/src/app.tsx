@@ -12,7 +12,15 @@ import { findingKey } from "./editor/positions";
 import { EngineClient, EngineRestarted, type ReadyInfo, type RunHandlers } from "./engine/client";
 import type { CourseItem, Finding, Report, TestResult } from "./engine/types";
 import { ExercisePanel } from "./exercises/ExercisePanel";
-import { exerciseAttempted, KeyValueStore, lessonRead, mistakesSeen, newMistakes } from "./progress/store";
+import {
+  exerciseAttempted,
+  KeyValueStore,
+  lessonRead,
+  mistakesSeen,
+  newMistakes,
+  practiceDue,
+  practised,
+} from "./progress/store";
 import { useProgress } from "./progress/useProgress";
 import { load, save } from "./storage";
 
@@ -363,6 +371,8 @@ export function App() {
                 onState={(key, state) => setCardStates((all) => ({ ...all, [key]: state }))}
                 onAcceptFix={(finding) => finding.fix && replaceDoc(finding.fix.source)}
                 emptyMessage={ready ? "No problems found so far." : "Loading Python…"}
+                practiceDue={(cardId) => practiceDue(progress, cardId)}
+                onPractised={(cardId) => updateProgress((p) => practised(p, cardId))}
               />
             </aside>
           </>

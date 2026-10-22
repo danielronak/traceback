@@ -15,6 +15,12 @@ examples = [
   { source = "count = 0\nprint(10 / count)\n" },
 ]
 
+[card.quiz]
+question = "What does Python do with `10 / 0`?"
+choices = ["Gives 0", "Gives infinity", "Stops with a ZeroDivisionError"]
+answer = 2
+explain = "Dividing by zero has no answer, so Python stops. Check the number isn't 0 first."
+
 [[card]]
 id = "recursion-limit"
 title = "`{function}()` keeps calling itself and never stops"
@@ -45,6 +51,12 @@ related = ["infinite-loop"]
 examples = [
   { source = "count = 0\nwhile count < 5:\n    print(count)\n" },
 ]
+
+[card.quiz]
+question = "`while count < 5:` will stop only if..."
+choices = ["the loop prints something", "something inside the loop makes count 5 or more", "you wait long enough"]
+answer = 1
+explain = "The condition is checked before every repeat, so something inside the loop must change it."
 
 [[card]]
 id = "infinite-loop"

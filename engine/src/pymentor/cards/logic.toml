@@ -20,6 +20,12 @@ examples = [
   { source = "def double(n):\n    print(n * 2)\n", tests = [{ call = "double(4)", expect = "8" }], after = "    return n * 2" },
 ]
 
+[card.quiz]
+question = "A test checks what `double(4)` gives back. Which line inside the function does that?"
+choices = ["print(n * 2)", "return n * 2", "n * 2"]
+answer = 1
+explain = "return hands the value back to the caller. print only shows it on the screen."
+
 [[card]]
 id = "missing-return"
 title = "`{function}()` doesn't return anything"
@@ -36,6 +42,12 @@ related = ["printed-not-returned"]
 examples = [
   { source = "def double(n):\n    answer = n * 2\n", tests = [{ call = "double(4)", expect = "8" }] },
 ]
+
+[card.quiz]
+question = "What does a function give back if it never reaches a return?"
+choices = ["0", "The last value it worked out", "None"]
+answer = 2
+explain = "Without return, every function gives back None."
 
 [[card]]
 id = "returned-text-not-number"
@@ -67,6 +79,12 @@ hints = [
 examples = [
   { source = "def last_index(items):\n    return len(items)\n", tests = [{ call = "last_index([5, 6, 7])", expect = "2" }] },
 ]
+
+[card.quiz]
+question = "Which numbers does `range(1, 5)` give?"
+choices = ["1, 2, 3, 4", "1, 2, 3, 4, 5", "0, 1, 2, 3, 4"]
+answer = 0
+explain = "range stops just before the second number. That's the usual source of off-by-one mistakes."
 
 [[card]]
 id = "test-failed"
@@ -131,6 +149,12 @@ related = ["input-is-string"]
 examples = [
   { source = "a = input()\nb = input()\nprint(a + b)\n", tests = [{ inputs = ["3", "4"], output = "7" }], after = "a = int(input())\nb = int(input())" },
 ]
+
+[card.quiz]
+question = "What is `\"3\" + \"4\"`?"
+choices = ["7", "\"34\"", "An error"]
+answer = 1
+explain = "`+` joins two pieces of text end to end. To add numbers, convert the text with int() first."
 
 [[card]]
 id = "wrong-output"

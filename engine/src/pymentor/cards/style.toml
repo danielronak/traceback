@@ -18,6 +18,12 @@ examples = [
   { source = "myAge = 14\n", after = "my_age = 14" },
 ]
 
+[card.quiz]
+question = "Which variable name follows Python's style?"
+choices = ["TotalScore", "totalScore", "total_score"]
+answer = 2
+explain = "Python variables use lowercase words joined by underscores (snake_case)."
+
 [[card]]
 id = "naming-function"
 title = "Function names are written in snake_case: `{suggested_name}`"

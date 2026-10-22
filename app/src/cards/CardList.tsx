@@ -2,7 +2,7 @@
 
 import type { Finding } from "../engine/types";
 import { findingKey } from "../editor/positions";
-import { type CardAction, type CardState, FRESH, SEVERITY_LABEL, advance, hintLabel } from "./ladder";
+import { type CardAction, type CardState, FRESH, SEVERITY_LABEL, advance, answerQuiz, hintLabel } from "./ladder";
 import { Code } from "./Code";
 
 interface Props {
@@ -14,6 +14,9 @@ interface Props {
   onAcceptFix(finding: Finding): void;
   acceptLabel?: string;
   emptyMessage: string;
+  /** Repetition becomes practice: ask the card's quiz before helping. */
+  practiceDue?(cardId: string): boolean;
+  onPractised?(cardId: string): void;
 }
 
 export function CardList(props: Props) {
@@ -39,6 +42,13 @@ export function CardList(props: Props) {
               }
               onAcceptFix={() => props.onAcceptFix(finding)}
               acceptLabel={props.acceptLabel ?? "Accept fix"}
+              quizzing={!!finding.card?.quiz && !!props.practiceDue?.(finding.card.id)}
+              onAnswer={(choice) => {
+                const quiz = finding.card!.quiz!;
+                const next = answerQuiz(props.states[key] ?? FRESH, choice, quiz.answer);
+                props.onState(key, next);
+                if (next.answered) props.onPractised?.(finding.card!.id);
+              }}
             />
           </li>
         );
@@ -55,9 +65,13 @@ interface CardProps {
   onAction(action: CardAction): void;
   onAcceptFix(): void;
   acceptLabel: string;
+  quizzing: boolean;
+  onAnswer(choice: number): void;
 }
 
-function CardView({ finding, open, state, onOpen, onAction, onAcceptFix, acceptLabel }: CardProps) {
+function CardView(props: CardProps) {
+  const { finding, open, state, onOpen, onAction, onAcceptFix, acceptLabel, onAnswer } = props;
+  const quizzing = props.quizzing && !state.answered;
   const { diagnostic: d, card, fix } = finding;
   const title = card?.title ?? `${d.code}: ${d.message}`;
   const hintCount = card?.hints.length ?? 0;
@@ -71,8 +85,33 @@ function CardView({ finding, open, state, onOpen, onAction, onAcceptFix, acceptL
         </span>
         <span class="card-line">line {d.line}</span>
       </button>
-      {open && (
+      {open && quizzing && card?.quiz && (
+        <div class="card-body quiz">
+          <p class="quiz-intro">You've run into this one a few times. A quick question first:</p>
+          <p class="quiz-question">
+            <Code text={card.quiz.question} />
+          </p>
+          <div class="quiz-choices" role="group" aria-label="Choose an answer">
+            {card.quiz.choices.map((choice, i) => (
+              <button key={choice} type="button" disabled={state.wrong.includes(i)} onClick={() => onAnswer(i)}>
+                <Code text={choice} />
+              </button>
+            ))}
+          </div>
+          {state.wrong.length > 0 && (
+            <p class="quiz-feedback" role="status">
+              Not quite. Have another go.
+            </p>
+          )}
+        </div>
+      )}
+      {open && !quizzing && (
         <div class="card-body">
+          {state.answered && card?.quiz && (
+            <p class="quiz-right" role="status">
+              Right! <Code text={card.quiz.explain} />
+            </p>
+          )}
           {card ? (
             <p class="card-rule">
               <Code text={card.rule} />

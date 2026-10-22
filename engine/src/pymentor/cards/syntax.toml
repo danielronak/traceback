@@ -21,6 +21,12 @@ examples = [
   { source = "for n in range(3)  # count to three\n    print(n)\n", after = "for n in range(3):  # count to three" },
 ]
 
+[card.quiz]
+question = "Which of these lines is written correctly?"
+choices = ["if score > 50", "if score > 50:", "if: score > 50"]
+answer = 1
+explain = "A line that starts a block (if, for, while, def, ...) ends with a colon. The colon tells Python an indented block comes next."
+
 [[card]]
 id = "assign-in-condition"
 title = "`=` used where `==` was meant on line {line}"
@@ -37,6 +43,12 @@ examples = [
   { source = "x = 5\nif x = 5:\n    print(\"five\")\n", after = "if x == 5:" },
   { source = "answer = \"yes\"\nwhile answer = \"yes\":\n    answer = input()\n", after = "while answer == \"yes\":" },
 ]
+
+[card.quiz]
+question = "What does `x == 5` do?"
+choices = ["Stores 5 in x", "Asks whether x equals 5", "Adds 5 to x"]
+answer = 1
+explain = "`==` compares two values and gives True or False. A single `=` stores a value in a variable."
 
 [[card]]
 id = "indent-expected"
@@ -57,6 +69,12 @@ examples = [
   { source = "def greet():\nprint(\"hi\")\n", after = "    print(\"hi\")" },
 ]
 
+[card.quiz]
+question = "After `if ready:`, how does Python know which lines belong to the if?"
+choices = ["They are indented", "They end with a colon", "They are in curly brackets"]
+answer = 0
+explain = "Python groups lines by indentation. The lines indented under `if ready:` belong to it."
+
 [[card]]
 id = "unexpected-indent"
 title = "Unexpected indentation on line {line}"
@@ -73,6 +91,12 @@ related = ["indent-expected", "unindent-mismatch"]
 examples = [
   { source = "name = \"Ada\"\n    print(name)\n", after = "print(name)" },
 ]
+
+[card.quiz]
+question = "When should a line be indented further than the line above it?"
+choices = ["Whenever you like, to make it neat", "Only when the line above ends with a colon", "Only inside a print()"]
+answer = 1
+explain = "Extra indentation means \"this line belongs to the block above\", so it only comes after a line that starts a block."
 
 [[card]]
 id = "unindent-mismatch"
@@ -123,6 +147,12 @@ examples = [
   { source = "name = \"Ada\nprint(name)\n", after = "name = \"Ada\"" },
 ]
 
+[card.quiz]
+question = "Which of these is a complete piece of text (a string)?"
+choices = ["'hello", "\"hello'", "\"hello\""]
+answer = 2
+explain = "A string starts and ends with the same kind of quote mark."
+
 [[card]]
 id = "bracket-never-closed"
 title = "The `{bracket}` on line {line} is never closed"
@@ -140,6 +170,12 @@ examples = [
   { source = "print('a'\nx = 1\n", after = "print('a')" },
   { source = "total = sum([1, 2, 3]\nprint(total)\n", after = "total = sum([1, 2, 3])" },
 ]
+
+[card.quiz]
+question = "Which line has balanced brackets?"
+choices = ["print(len(word)", "print(len(word))", "print(len(word)))"]
+answer = 1
+explain = "Every opening bracket needs exactly one matching closing bracket."
 
 [[card]]
 id = "bracket-unmatched"

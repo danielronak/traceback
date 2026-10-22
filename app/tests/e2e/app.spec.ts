@@ -119,6 +119,30 @@ test("the course: overview, a lesson with runnable snippets, then its exercise",
   await expect(page.getByRole("button", { name: "Continue: Remembering things: variables and input" })).toBeVisible();
 });
 
+test("repeating a mistake turns the card into a quick quiz first", async ({ page }) => {
+  await open(page);
+  // Make the mistake, fix it, and make it again, three times. (Re-running the
+  // same broken code counts once: it's still the same mistake.)
+  for (let time = 1; time <= 3; time++) {
+    if (time > 1) {
+      await setCode(page, "x = 1\nif x > 0:\n    print(x)\n");
+      await run(page);
+      await expect(page.locator(".console-note")).toHaveText("The program finished.");
+    }
+    await setCode(page, "x = 1\nif x > 0\n    print(x)\n");
+    await run(page);
+    await expect(page.locator(".card-title").first()).toHaveText("Missing colon on line 2");
+  }
+  const card = page.locator(".card").first();
+  await expect(card.locator(".quiz-intro")).toBeVisible();
+  await expect(card.getByRole("button", { name: "Show the fix" })).toHaveCount(0);
+  await card.getByRole("button", { name: "if score > 50", exact: true }).click();
+  await expect(card.locator(".quiz-feedback")).toHaveText("Not quite. Have another go.");
+  await card.getByRole("button", { name: "if score > 50:", exact: true }).click();
+  await expect(card.locator(".quiz-right")).toContainText("Right!");
+  await expect(card.getByRole("button", { name: "Show the fix" })).toBeVisible();
+});
+
 test("an exercise: fail, get taught, fix, pass, and keep the draft", async ({ page }) => {
   await start(page);
   await page.getByRole("navigation", { name: "Course" }).getByRole("button", { name: /Fix the adding machine/ }).click();

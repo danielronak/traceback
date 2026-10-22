@@ -14,6 +14,13 @@ export interface Diagnostic {
   data: Record<string, unknown>;
 }
 
+export interface Quiz {
+  question: string;
+  choices: string[];
+  answer: number; // index into choices
+  explain: string;
+}
+
 export interface Card {
   id: string;
   title: string;
@@ -22,6 +29,7 @@ export interface Card {
   hints: string[];
   exceptions: string;
   related: string[];
+  quiz: Quiz | null;
 }
 
 export interface Fix {

@@ -84,3 +84,27 @@ def test_rendering_refuses_missing_or_none_facts():
 
 def test_bundled_library_loads():
     assert len(CardLibrary.load()) > 0
+
+
+QUIZ = (
+    '\n[card.quiz]\nquestion = "Q?"\nchoices = {choices}\nanswer = {answer}\nexplain = "Because."\n'
+)
+
+
+@pytest.mark.parametrize(
+    ("choices", "answer", "complaint"),
+    [
+        ('["only one"]', 0, "2 to 4 choices"),
+        ('["a", "a"]', 0, "distinct"),
+        ('["a", "b"]', 2, "index of one of the choices"),
+    ],
+)
+def test_malformed_quizzes_are_rejected(choices, answer, complaint):
+    with pytest.raises(CardError, match=complaint):
+        parse_cards(card() + QUIZ.format(choices=choices, answer=answer), "test.toml")
+
+
+def test_quizzes_reach_the_rendered_card_untemplated():
+    [demo] = parse_cards(card() + QUIZ.format(choices='["{a}", "b"]', answer=1), "test.toml")
+    rendered = demo.render({"name": "x"})
+    assert rendered.quiz.choices == ("{a}", "b") and rendered.quiz.answer == 1

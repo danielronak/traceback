@@ -16,6 +16,12 @@ examples = [
   { source = "nums = [4, 5]\nfor i in range(len(nums) + 1):\n    print(nums[i])\n" },
 ]
 
+[card.quiz]
+question = "A list has 3 items. What is the index of the last one?"
+choices = ["3", "2", "-3"]
+answer = 1
+explain = "Indexes start at 0, so the last index is one less than the length (or simply -1)."
+
 [[card]]
 id = "key-missing"
 title = "The dictionary has no key {key}"
@@ -30,6 +36,12 @@ hints = [
 examples = [
   { source = "ages = {\"Ana\": 12}\nprint(ages[\"Bob\"])\n" },
 ]
+
+[card.quiz]
+question = "`ages = {\"Ada\": 36}`. Which line is safe if \"Zoe\" might be missing?"
+choices = ["ages[\"Zoe\"]", "ages.get(\"Zoe\", 0)", "ages(\"Zoe\")"]
+answer = 1
+explain = ".get() gives back a default instead of stopping with a KeyError."
 
 [[card]]
 id = "none-from-inplace-method"
@@ -47,6 +59,12 @@ related = ["none-attribute"]
 examples = [
   { source = "numbers = [3, 1, 2]\nordered = numbers.sort()\nordered.append(4)\n" },
 ]
+
+[card.quiz]
+question = "What does `numbers.sort()` give back?"
+choices = ["A new sorted list", "None, because it sorts numbers itself", "The first number"]
+answer = 1
+explain = "In-place methods like sort() and append() change the list and give back None. Use sorted() for a new list."
 
 [[card]]
 id = "none-attribute"

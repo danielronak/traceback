@@ -20,6 +20,12 @@ examples = [
   { source = "name = \"Ada\"\nprint(Name)\n", after = "print(name)" },
 ]
 
+[card.quiz]
+question = "You created `total = 0`. What does Python think `Total` is?"
+choices = ["The same variable", "A different, unknown name", "A built-in function"]
+answer = 1
+explain = "Names must match exactly, including capital letters. `Total` and `total` are two different names."
+
 [[card]]
 id = "builtin-typo"
 title = "`{name}` is not defined. Did you mean `{builtin_name}`?"
@@ -37,6 +43,12 @@ examples = [
   { source = "pritn(\"hello\")\n", after = "print(\"hello\")" },
   { source = "Print(\"hi\")\n", after = "print(\"hi\")" },
 ]
+
+[card.quiz]
+question = "Which of these calls Python's print function?"
+choices = ["Print(\"hi\")", "pritn(\"hi\")", "print(\"hi\")"]
+answer = 2
+explain = "Built-in names like print are spelled exactly and in lowercase."
 
 [[card]]
 id = "missing-import"
@@ -56,6 +68,12 @@ examples = [
   { source = "import time\nprint(random.randint(1, 6))\n", after = "import random" },
 ]
 
+[card.quiz]
+question = "Before you can use `math.sqrt`, what must your program do?"
+choices = ["Define a function called math", "import math", "Install Python again"]
+answer = 1
+explain = "Standard-library modules like math have to be imported before you use them."
+
 [[card]]
 id = "used-before-assignment"
 title = "`{name}` is used before it's created"
@@ -72,6 +90,12 @@ examples = [
   { source = "print(score)\nscore = 10\n" },
   { source = "greet()\n\ndef greet():\n    print(\"hi\")\n" },
 ]
+
+[card.quiz]
+question = "In which order does Python run the lines of a program?"
+choices = ["Top to bottom", "Bottom to top", "All at the same time"]
+answer = 0
+explain = "Python runs lines from top to bottom, so a variable must be created before the line that uses it."
 
 [[card]]
 id = "name-in-function"
@@ -105,6 +129,12 @@ fix = "quote_name"
 examples = [
   { source = "print(hello)\n", after = "print(\"hello\")" },
 ]
+
+[card.quiz]
+question = "Which line shows the word hello on screen?"
+choices = ["print(hello)", "print(\"hello\")", "print[hello]"]
+answer = 1
+explain = "Text goes inside quote marks. Without them, Python reads hello as the name of a variable."
 
 [[card]]
 id = "name-undefined"
