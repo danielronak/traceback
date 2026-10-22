@@ -76,14 +76,37 @@ def candidates(
 # --- verification ------------------------------------------------------------
 
 Runner = Callable[[str, list[str]], Any]  # (source, inputs) -> sandbox.RunResult
+Recheck = Callable[[str], list[Diagnostic]]  # fixed source -> the facts about it
 
 
-def verify(original: Diagnostic, fixed: str, run: Runner, inputs: list[str]) -> bool:
+def verify(
+    original: Diagnostic,
+    fixed: str,
+    run: Runner,
+    inputs: list[str],
+    recheck: Recheck | None = None,
+) -> bool:
     """Does the fixed program remove this error without a new one at or before its line?
 
     This is deliberately not "the program is now correct": fixing one error
     often reveals the next, further down, and that's fine.
+
+    In an exercise, ``recheck`` re-runs the exercise's tests on the fixed
+    program. A runtime fix must leave no crash at or before its line; a logic
+    fix must make its own failing test pass without causing a crash.
     """
+    if recheck is not None and original.severity in (Severity.RUNTIME, Severity.LOGIC):
+        after = recheck(fixed)
+        if any(d.severity is Severity.SYNTAX for d in after):
+            return False
+        if original.severity is Severity.RUNTIME:
+            return not any(d.severity.blocking and d.line <= original.line for d in after)
+        return not any(d.severity.blocking for d in after) and not any(
+            d.code == original.code and d.data.get("test") == original.data.get("test")
+            for d in after
+        )
+    if original.severity is Severity.LOGIC:
+        return False  # logic fixes can only be verified by re-running the tests
     syntax_error = check_syntax(fixed)
     if original.severity is Severity.SYNTAX:
         return syntax_error is None or syntax_error.line > original.line
@@ -281,6 +304,37 @@ def int_input(ctx: FixContext) -> list[str]:
 
 
 @generator
+def int_inputs(ctx: FixContext) -> list[str]:
+    """a = input()  ->  a = int(input()), for every input() not already converted"""
+    tree = ctx.tree()
+    converted = {
+        id(node.args[0])
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in ("int", "float")
+        and node.args
+    }
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "input"
+        and id(node) not in converted
+        and node.lineno == node.end_lineno
+    ]
+    source = ctx.source
+    # Right to left, bottom to top, so earlier positions stay valid.
+    for node in sorted(calls, key=lambda n: (n.lineno, n.col_offset), reverse=True):
+        segment = ast.get_source_segment(ctx.source, node)
+        source = replace_span(
+            source, node.lineno, node.col_offset, node.end_col_offset, f"int({segment})"
+        )
+    return [source] if calls else []
+
+
+@generator
 def wrap_range(ctx: FixContext) -> list[str]:
     """for i in 5:  ->  for i in range(5):"""
     tree = ctx.tree()
@@ -307,6 +361,45 @@ def brackets_to_call(ctx: FixContext) -> list[str]:
             ctx.source, node.lineno, node.col_offset, node.end_col_offset, f"{value}({index})"
         )
     ]
+
+
+# --- logic fixes -----------------------------------------------------------------
+
+
+@generator
+def print_to_return(ctx: FixContext) -> list[str]:
+    """def double(n): print(n * 2)  ->  def double(n): return n * 2"""
+    tree = ctx.tree()
+    function = next(
+        (
+            n
+            for n in ast.walk(tree)
+            if isinstance(n, ast.FunctionDef) and n.name == ctx.features["function"]
+        ),
+        None,
+    )
+    if function is None:
+        return []
+    prints = [
+        statement
+        for statement in function.body
+        if isinstance(statement, ast.Expr)
+        and isinstance(statement.value, ast.Call)
+        and isinstance(statement.value.func, ast.Name)
+        and statement.value.func.id == "print"
+        and len(statement.value.args) == 1
+        and not statement.value.keywords
+    ]
+    candidates = []
+    for statement in reversed(prints):  # the last print is most often the answer
+        if statement.lineno != statement.end_lineno:
+            continue
+        value = ast.get_source_segment(ctx.source, statement.value.args[0])
+        text = line_text(ctx.source, statement.lineno)
+        candidates.append(
+            replace_line(ctx.source, statement.lineno, f"{indentation(text)}return {value}")
+        )
+    return candidates
 
 
 # --- style fixes -----------------------------------------------------------------

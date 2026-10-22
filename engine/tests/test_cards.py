@@ -5,8 +5,10 @@ import pytest
 
 from pymentor.cards import CardLibrary
 from pymentor.engine import Engine
+from pymentor.exercises import Exercise
 
 LIBRARY = CardLibrary.load()
+NON_BLOCKING_CODES = {"test-failed", "wrong-output"}
 STYLE_CODES = {
     "naming-variable",
     "naming-function",
@@ -15,7 +17,7 @@ STYLE_CODES = {
     "compare-none",
     "compare-bool",
 }
-BLOCKING_CODES = {c for card in LIBRARY for c in card.codes} - STYLE_CODES
+BLOCKING_CODES = {c for card in LIBRARY for c in card.codes} - STYLE_CODES - NON_BLOCKING_CODES
 ENGINE = Engine(LIBRARY, step_limit=20_000)
 EXAMPLES = [
     pytest.param(card, example, id=f"{card.id}-{n}")
@@ -24,8 +26,15 @@ EXAMPLES = [
 ]
 
 
+def _report(example):
+    if example.tests:
+        exercise = Exercise("example", "Example", "", "", "", example.tests)
+        return ENGINE.run_exercise(exercise, example.source)
+    return ENGINE.run(example.source, list(example.inputs))
+
+
 def _finding_for(example):
-    report = ENGINE.run(example.source, list(example.inputs))
+    report = _report(example)
     assert report.findings, f"no finding at all for:\n{example.source}"
     # Blocking errors come first; for style cards, look at the style findings.
     return report.findings
@@ -43,8 +52,7 @@ def test_example_triggers_its_card(card, example):
     findings = _finding_for(example)
     if findings[0].diagnostic.severity.blocking or card.codes[0] in BLOCKING_CODES:
         # An error card must explain the error the learner has to fix first.
-        report = ENGINE.run(example.source, list(example.inputs))
-        assert _label(report.blocking) == card.id
+        assert _label(_report(example).blocking) == card.id
     else:
         ids = [_label(f) for f in findings]
         assert card.id in ids, f"expected {card.id}, got {ids}"

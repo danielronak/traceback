@@ -1,0 +1,25 @@
+id = "bigger"
+title = "The bigger number"
+prompt = """
+Write a function `bigger(a, b)` that returns whichever of the two numbers is
+bigger. Try it with `if`, without using Python's `max()`.
+"""
+starter = '''
+def bigger(a, b):
+    pass
+'''
+solution = '''
+def bigger(a, b):
+    if a > b:
+        return a
+    return b
+'''
+hints = [
+  "Compare the numbers with `>`.",
+  "A function can have more than one `return`; the first one that runs ends the function.",
+]
+tests = [
+  { call = "bigger(3, 9)", expect = "9" },
+  { call = "bigger(10, 2)", expect = "10" },
+  { call = "bigger(-1, -5)", expect = "-1" },
+]

@@ -1,0 +1,24 @@
+id = "double"
+title = "Double it"
+prompt = """
+Write a function `double(n)` that returns `n` times 2.
+For example, `double(4)` returns `8`.
+"""
+starter = '''
+def double(n):
+    # Return n times 2
+    pass
+'''
+solution = '''
+def double(n):
+    return n * 2
+'''
+hints = [
+  "Multiplication in Python is written with `*`.",
+  "Use `return` to hand the answer back.",
+]
+tests = [
+  { call = "double(4)", expect = "8" },
+  { call = "double(0)", expect = "0" },
+  { call = "double(-3)", expect = "-6" },
+]

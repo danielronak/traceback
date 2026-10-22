@@ -21,6 +21,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
+from .exercises import ExerciseTest, parse_tests
 from .facts import Diagnostic, RenderedCard
 from .fixes import has_generator
 
@@ -29,7 +30,7 @@ CARD_FIELDS = {
     "exceptions", "related", "examples",
 }  # fmt: skip
 MATCH_FIELDS = {"code", "message", "when"}
-EXAMPLE_FIELDS = {"source", "inputs", "after", "no_fix"}
+EXAMPLE_FIELDS = {"source", "inputs", "after", "no_fix", "tests"}
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
 
 
@@ -45,6 +46,8 @@ class Example:
     inputs: tuple[str, ...] = ()
     after: str | None = None  # the expected fixed line(s), if the card has a fix
     no_fix: bool = False  # the card's fix doesn't apply to this example
+    # Exercise tests to run the example against, for cards about test failures.
+    tests: tuple[ExerciseTest, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -230,6 +233,7 @@ def _parse_card(entry: dict[str, Any], origin: str) -> Card:
                 inputs=tuple(example.get("inputs", ())),
                 after=example.get("after"),
                 no_fix=bool(example.get("no_fix", False)),
+                tests=parse_tests(example["tests"], where) if "tests" in example else (),
             )
         )
     if not examples:

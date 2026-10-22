@@ -1,0 +1,23 @@
+id = "rectangle-area"
+title = "Area of a rectangle"
+prompt = """
+Write a function `area(width, height)` that returns the area of a rectangle:
+its width multiplied by its height.
+"""
+starter = '''
+def area(width, height):
+    pass
+'''
+solution = '''
+def area(width, height):
+    return width * height
+'''
+hints = [
+  "The area is width times height.",
+  "The function has two parameters; use both.",
+]
+tests = [
+  { call = "area(3, 4)", expect = "12" },
+  { call = "area(5, 5)", expect = "25" },
+  { call = "area(2.5, 2)", expect = "5.0" },
+]

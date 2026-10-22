@@ -8,6 +8,8 @@ import tokenize
 # The filename learner code is compiled under. Traceback frames with this
 # filename belong to the learner; everything else is Python or a library.
 LEARNER_FILENAME = "<learner>"
+# The filename exercise test calls are compiled under.
+TEST_FILENAME = "<test>"
 
 
 def lines(source: str) -> list[str]:

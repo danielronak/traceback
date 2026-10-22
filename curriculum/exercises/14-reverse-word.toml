@@ -1,0 +1,24 @@
+id = "reverse-word"
+title = "Backwards"
+prompt = """
+Write a function `reverse(word)` that returns the word spelled backwards.
+`reverse("abc")` returns `"cba"`.
+"""
+starter = '''
+def reverse(word):
+    pass
+'''
+solution = '''
+def reverse(word):
+    return word[::-1]
+'''
+hints = [
+  "You could build a new string letter by letter in a loop, adding each letter to the front.",
+  "Slices take a step too: `word[::2]` takes every second letter.",
+  "A step of `-1` walks through the string backwards.",
+]
+tests = [
+  { call = "reverse('abc')", expect = "'cba'" },
+  { call = "reverse('racecar')", expect = "'racecar'" },
+  { call = "reverse('')", expect = "''" },
+]

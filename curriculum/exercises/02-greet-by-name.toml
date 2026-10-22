@@ -1,0 +1,25 @@
+id = "greet-by-name"
+title = "Greet someone by name"
+prompt = """
+The program asks for a name. Make it greet that person. If they type `Ada`,
+it should print:
+
+    Hello, Ada!
+"""
+starter = '''
+name = input("What's your name? ")
+# Greet the person by name
+'''
+solution = '''
+name = input("What's your name? ")
+print("Hello, " + name + "!")
+'''
+hints = [
+  "`name` holds whatever the person typed.",
+  "You can join pieces of text with `+`.",
+  "Don't forget the comma, the space and the `!`.",
+]
+tests = [
+  { inputs = ["Ada"], output = "Hello, Ada!" },
+  { inputs = ["Sam"], output = "Hello, Sam!" },
+]

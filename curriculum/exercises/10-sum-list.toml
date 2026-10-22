@@ -1,0 +1,27 @@
+id = "sum-list"
+title = "Add up a list"
+prompt = """
+Write a function `total(numbers)` that returns the sum of all the numbers in
+a list. Use a loop rather than Python's `sum()`. An empty list adds up to `0`.
+"""
+starter = '''
+def total(numbers):
+    pass
+'''
+solution = '''
+def total(numbers):
+    result = 0
+    for n in numbers:
+        result += n
+    return result
+'''
+hints = [
+  "Start a variable at 0 before the loop.",
+  "Add each number to it inside the loop.",
+  "Return it after the loop has finished, so not indented inside the loop.",
+]
+tests = [
+  { call = "total([1, 2, 3])", expect = "6" },
+  { call = "total([])", expect = "0" },
+  { call = "total([-1, 1, 10])", expect = "10" },
+]

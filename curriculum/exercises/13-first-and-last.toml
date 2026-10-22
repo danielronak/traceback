@@ -1,0 +1,23 @@
+id = "first-and-last"
+title = "First and last"
+prompt = """
+Write a function `first_and_last(items)` that returns a new list holding the
+first and the last item of `items`. The list always has at least one item.
+"""
+starter = '''
+def first_and_last(items):
+    return [items[0], items[len(items)]]
+'''
+solution = '''
+def first_and_last(items):
+    return [items[0], items[-1]]
+'''
+hints = [
+  "The first item is at index 0. Where is the last one?",
+  "A list with 3 items has the indexes 0, 1 and 2.",
+  "Python lets you count from the end with negative indexes: `items[-1]`.",
+]
+tests = [
+  { call = "first_and_last([1, 2, 3])", expect = "[1, 3]" },
+  { call = "first_and_last(['a'])", expect = "['a', 'a']" },
+]

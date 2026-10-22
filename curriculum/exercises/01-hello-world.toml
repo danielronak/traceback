@@ -1,0 +1,21 @@
+id = "hello-world"
+title = "Hello, world!"
+prompt = """
+Every programmer's first program shows a message on the screen.
+Make your program print exactly:
+
+    Hello, world!
+"""
+starter = '''
+# Print the message here
+'''
+solution = '''
+print("Hello, world!")
+'''
+hints = [
+  "`print(...)` shows whatever you put inside the brackets.",
+  "Text goes inside quote marks: `\"like this\"`.",
+]
+tests = [
+  { output = "Hello, world!" },
+]

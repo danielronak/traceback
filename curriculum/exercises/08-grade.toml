@@ -1,0 +1,36 @@
+id = "grade"
+title = "Letter grades"
+prompt = """
+Write a function `grade(score)` that turns a test score into a letter:
+
+- 90 or more: `"A"`
+- 80 or more: `"B"`
+- 70 or more: `"C"`
+- anything lower: `"F"`
+"""
+starter = '''
+def grade(score):
+    pass
+'''
+solution = '''
+def grade(score):
+    if score >= 90:
+        return "A"
+    elif score >= 80:
+        return "B"
+    elif score >= 70:
+        return "C"
+    else:
+        return "F"
+'''
+hints = [
+  "Use `if`, `elif` and `else` to check one range after another.",
+  "Check the highest grade first.",
+  "\"80 or more\" is written `score >= 80`.",
+]
+tests = [
+  { call = "grade(95)", expect = "'A'" },
+  { call = "grade(80)", expect = "'B'" },
+  { call = "grade(75)", expect = "'C'" },
+  { call = "grade(50)", expect = "'F'" },
+]

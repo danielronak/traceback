@@ -1,0 +1,35 @@
+id = "fizzbuzz"
+title = "FizzBuzz"
+prompt = """
+Write a function `fizzbuzz(n)` that returns:
+
+- `"FizzBuzz"` if `n` divides by both 3 and 5
+- `"Fizz"` if it divides by 3
+- `"Buzz"` if it divides by 5
+- otherwise, the number itself as text, such as `"7"`
+"""
+starter = '''
+def fizzbuzz(n):
+    pass
+'''
+solution = '''
+def fizzbuzz(n):
+    if n % 15 == 0:
+        return "FizzBuzz"
+    if n % 3 == 0:
+        return "Fizz"
+    if n % 5 == 0:
+        return "Buzz"
+    return str(n)
+'''
+hints = [
+  "`n % 3 == 0` is `True` when `n` divides by 3.",
+  "The order of the checks matters. Which case must you check first?",
+  "The last case returns text, so convert the number with `str()`.",
+]
+tests = [
+  { call = "fizzbuzz(3)", expect = "'Fizz'" },
+  { call = "fizzbuzz(10)", expect = "'Buzz'" },
+  { call = "fizzbuzz(15)", expect = "'FizzBuzz'" },
+  { call = "fizzbuzz(7)", expect = "'7'" },
+]

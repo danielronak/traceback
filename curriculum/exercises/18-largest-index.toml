@@ -1,0 +1,33 @@
+id = "largest-index"
+title = "Where is the largest?"
+prompt = """
+Write a function `largest_index(numbers)` that returns the index (position) of
+the largest number in a list. If the largest appears more than once, return
+the last position. The list always has at least one number.
+"""
+starter = '''
+def largest_index(numbers):
+    best = 0
+    for i in range(len(numbers)):
+        if numbers[i] > numbers[best]:
+            best = i
+    return best
+'''
+solution = '''
+def largest_index(numbers):
+    best = 0
+    for i in range(len(numbers)):
+        if numbers[i] >= numbers[best]:
+            best = i
+    return best
+'''
+hints = [
+  "The starter is almost right. Which test fails?",
+  "What happens when the loop meets a number equal to the best so far?",
+  "Should `>` or `>=` decide whether to move `best`?",
+]
+tests = [
+  { call = "largest_index([3, 9, 2])", expect = "1" },
+  { call = "largest_index([5])", expect = "0" },
+  { call = "largest_index([2, 7, 7])", expect = "2" },
+]
