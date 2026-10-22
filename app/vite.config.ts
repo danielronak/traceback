@@ -3,7 +3,8 @@ import { createReadStream, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import preact from "@preact/preset-vite";
-import { defineConfig, type Plugin } from "vite";
+import type { Plugin } from "vite";
+import { defineConfig } from "vitest/config";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..");
@@ -82,4 +83,5 @@ export default defineConfig({
   preview: { headers: ISOLATION_HEADERS },
   worker: { format: "es" },
   build: { target: "es2022" },
+  test: { include: ["tests/unit/**/*.test.ts"] },
 });

@@ -22,7 +22,10 @@ export function diagnosticRange(doc: DocLike, d: Diagnostic): { from: number; to
     const word = /^\w+/.exec(line.text.slice(from - line.from));
     to = Math.min(from + (word ? word[0].length : 1), line.to);
   }
-  if (to <= from) {
+  // A one-character range on a comment's `#` (Python's "expected ':'" before a
+  // comment) means the same as pointing just past the code.
+  const atComment = to - from === 1 && line.text[from - line.from] === "#";
+  if (to <= from || atComment) {
     // Python points just past the code for things like "expected ':'"; underline
     // the last character before that point instead (skipping spaces).
     let at = from - line.from;
