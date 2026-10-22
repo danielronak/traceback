@@ -1,0 +1,17 @@
+target-version = "py313"
+line-length = 100
+
+[lint]
+select = [
+  "E", "W",   # pycodestyle
+  "F",        # pyflakes
+  "I",        # isort
+  "UP",       # pyupgrade
+  "B",        # bugbear
+  "SIM",      # simplify
+  "RUF",      # ruff-specific
+]
+
+[lint.per-file-ignores]
+# Test snippets intentionally contain beginner mistakes inside strings.
+"engine/tests/**" = ["E501"]

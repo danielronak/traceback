@@ -1,0 +1,53 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.python-version
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# --- Node / web app ---
+node_modules/
+app/dist/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+
+# --- Training artefacts (large; never commit) ---
+training/runs/
+training/checkpoints/
+training/wandb/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.gguf
+*.tokens.bin
+
+# --- Generated data (benchmark/ is committed and frozen) ---
+data/raw/
+data/processed/
+data/generated/
+
+# --- Secrets and local config ---
+.env
+.env.*
+!.env.example
+
+# --- Editors and OS ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+.DS_Store
+Thumbs.db

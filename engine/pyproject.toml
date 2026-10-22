@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymentor"
+version = "0.1.0.dev0"
+description = "The deterministic correction engine and rule cards behind PyMentor."
+readme = "README.md"
+requires-python = ">=3.13"
+# Must stay empty: the engine runs inside Pyodide in the browser (see D1).
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+pymentor = "pymentor.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pymentor = ["cards/*.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
