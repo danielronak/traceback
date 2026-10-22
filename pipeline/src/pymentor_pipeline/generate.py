@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import multiprocessing
+import platform
 import time
 import warnings
 from collections import Counter, deque
@@ -174,6 +175,7 @@ def generate(
     every_case = [case for name, _ in SPLITS for case in cases[name]]
     manifest = {
         "prompt_version": prompt.PROMPT_VERSION,
+        "python": platform.python_version(),
         "per_kind": per_kind,
         "variants_per_seed": variant_count,
         "seeds": len(originals),

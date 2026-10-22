@@ -25,6 +25,23 @@ jobs:
       - name: Test
         run: pytest engine
 
+  pipeline:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: pip install -e engine -e "pipeline[dev]"
+      - name: Test
+        # Includes the frozen benchmark's checksum test and the harness.
+        run: pytest pipeline
+
   app:
     runs-on: ubuntu-latest
     defaults:

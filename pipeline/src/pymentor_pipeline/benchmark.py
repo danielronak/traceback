@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import sys
 from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
@@ -36,10 +37,17 @@ from .records import finding_from_record, finding_to_record
 
 VERSION = "v0"
 TARGET_CASES = 300
+# Error messages change between Python versions, so a benchmark is built on the
+# Python the app ships (D15): Pyodide 314 is Python 3.14 (D25).
+PYTHON = (3, 14)
 
 
 def build(repo: Path, *, log: Callable[[str], object] = print) -> list[dict[str, Any]]:
     """Every benchmark case, in a stable order."""
+    if sys.version_info[:2] != PYTHON:
+        raise RuntimeError(
+            f"build benchmarks on Python {'.'.join(map(str, PYTHON))}, as the app ships"
+        )
     engine = Engine()
     hand = _card_examples(engine) + _course_mistakes(engine, repo)
     mutations = _mutation_cases(repo)

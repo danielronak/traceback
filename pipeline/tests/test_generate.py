@@ -4,8 +4,6 @@ import json
 import time
 from pathlib import Path
 
-import pytest
-
 from pymentor import grounding, prompt
 from pymentor_pipeline.corpus import Seed, load_seeds
 from pymentor_pipeline.generate import (
@@ -22,7 +20,6 @@ from pymentor_pipeline.generate import (
 from pymentor_pipeline.records import finding_from_record
 
 REPO = Path(__file__).resolve().parents[2]
-SOME_SEEDS = load_seeds(REPO)[::5]
 
 
 def test_groups_keep_a_seeds_relatives_together():
@@ -63,15 +60,6 @@ def test_a_job_that_hangs_is_killed_and_the_rest_still_finish():
     assert {i: r for i, r in results.items() if i != 1} == {0: 0, 2: 2, 3: 3}
 
 
-@pytest.fixture(scope="module")
-def small_dataset(tmp_path_factory):
-    out = tmp_path_factory.mktemp("data")
-    manifest = generate(
-        REPO, out, per_kind=2, variant_count=1, workers=2, log=lambda _: None, only=SOME_SEEDS
-    )
-    return out, manifest
-
-
 def test_every_case_has_a_card_and_lands_in_its_seeds_split(small_dataset):
     out, manifest = small_dataset
     assert sum(manifest["cases"].values()) > 300
@@ -98,6 +86,12 @@ def test_examples_are_built_by_the_shared_prompt_format(small_dataset):
 def test_the_same_inputs_give_the_same_files(small_dataset, tmp_path):
     _, manifest = small_dataset
     again = generate(
-        REPO, tmp_path, per_kind=2, variant_count=1, workers=3, log=lambda _: None, only=SOME_SEEDS
+        REPO,
+        tmp_path,
+        per_kind=2,
+        variant_count=1,
+        workers=3,
+        log=lambda _: None,
+        only=load_seeds(REPO)[::5],
     )
     assert again["files"] == manifest["files"]

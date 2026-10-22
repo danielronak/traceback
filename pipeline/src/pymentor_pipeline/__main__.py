@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 from pathlib import Path
 
-from . import benchmark, evaluate
-from .generate import DEFAULT_PER_KIND, DEFAULT_VARIANTS, generate
+from . import benchmark, draft, evaluate, review, teachers
+from .generate import DEFAULT_PER_KIND, DEFAULT_VARIANTS, generate, read_jsonl
 
 REPO = Path(__file__).resolve().parents[3]
 BENCHMARKS = REPO / "benchmark"
@@ -32,6 +33,29 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--version", default=benchmark.VERSION)
     ev.add_argument("--name", help="results name (default: the model's)")
 
+    dr = commands.add_parser("draft", help="have a teacher model write training targets")
+    dr.add_argument("--teacher", required=True, help="'anthropic' or module:function")
+    dr.add_argument("--data", type=Path, default=REPO / "data" / "generated" / "v1")
+    dr.add_argument("--split", default="train")
+    dr.add_argument("--limit", type=int, default=None)
+    dr.add_argument("--model", default=None, help="for --teacher anthropic")
+
+    bs = commands.add_parser("batch-submit", help="send a split to the Anthropic Batches API")
+    bs.add_argument("--data", type=Path, default=REPO / "data" / "generated" / "v1")
+    bs.add_argument("--split", default="train")
+    bs.add_argument("--limit", type=int, default=None)
+
+    bc = commands.add_parser("batch-collect", help="judge a finished batch's outputs")
+    bc.add_argument("batch_id")
+    bc.add_argument("--data", type=Path, default=REPO / "data" / "generated" / "v1")
+    bc.add_argument("--split", default="train")
+
+    rv = commands.add_parser("review", help="spot-check drafted targets by hand")
+    rv.add_argument("--data", type=Path, default=REPO / "data" / "generated" / "v1")
+    rv.add_argument("--split", default="train")
+    rv.add_argument("--sample", type=int, default=50)
+    rv.add_argument("--summary", action="store_true", help="only print the results so far")
+
     args = parser.parse_args(argv)
     if args.command == "generate":
         generate(
@@ -47,6 +71,26 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{len(cases)} cases frozen in benchmark/{args.version} (sha256 {digest[:12]})")
     elif args.command == "evaluate":
         _evaluate(args)
+    elif args.command == "draft":
+        if args.teacher == "anthropic":
+            teacher = teachers.anthropic_teacher(**({"model": args.model} if args.model else {}))
+            name = args.model or teachers.DEFAULT_MODEL
+        else:
+            module, _, function = args.teacher.partition(":")
+            teacher, name = getattr(importlib.import_module(module), function), args.teacher
+        draft.draft(args.data, args.split, teacher, name=name, limit=args.limit)
+    elif args.command == "batch-submit":
+        examples = read_jsonl(args.data / f"examples-{args.split}.jsonl")[: args.limit]
+        batch_id = teachers.submit_anthropic_batch(examples, draft.system_prompt())
+        print(f"submitted {len(examples)} requests as batch {batch_id}")
+    elif args.command == "batch-collect":
+        results = teachers.anthropic_batch_results(args.batch_id)
+        tally = draft.accept_batch(args.data, args.split, results, name=teachers.DEFAULT_MODEL)
+        print(f"{args.split}: {dict(tally)}")
+    elif args.command == "review":
+        if not args.summary:
+            print(dict(review.review(args.data, args.split, sample=args.sample)))
+        print(json.dumps(review.summary(args.data, args.split), indent=2))
     return 0
 
 
