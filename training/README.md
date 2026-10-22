@@ -27,8 +27,11 @@ me", paste the output into the chat.
 
 ### 1. Set up (once, about 15 minutes)
 
+If you cloned the repo before 22 October 2026, delete that folder and clone it
+again: older Windows checkouts have the wrong line endings for the benchmark.
+
 ```powershell
-git clone https://github.com/danielronak/traceback.git   # or, if you have it: git pull
+git clone https://github.com/danielronak/traceback.git
 cd traceback
 uv venv -p 3.14 .venv
 .venv\Scripts\Activate.ps1
