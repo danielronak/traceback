@@ -11,8 +11,8 @@ Pyodide), in the VS Code extension and in the training-data pipeline.
 from pymentor import Engine
 
 engine = Engine()
-report = engine.check("if x > 2\n    print(x)\n")    # live, static checks
-report = engine.run(source, inputs=["5"])          # also runs the code
+report = engine.check("if x > 2\n    print(x)\n")  # live, static checks
+report = engine.run(source, inputs=["5"])  # also runs the code
 for finding in report.findings:
     print(finding.diagnostic.line, finding.card.title)
 ```

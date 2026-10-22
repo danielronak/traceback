@@ -15,3 +15,6 @@ select = [
 [lint.per-file-ignores]
 # Test snippets intentionally contain beginner mistakes inside strings.
 "engine/tests/**" = ["E501"]
+
+[lint.isort]
+known-first-party = ["pymentor"]

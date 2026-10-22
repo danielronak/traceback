@@ -1,0 +1,96 @@
+# Looking things up that aren't there (orange): items, keys and attributes.
+
+[[card]]
+id = "index-out-of-range"
+title = "Index `{index_text}` is past the end of `{container_text}`"
+match = { code = "IndexError", message = "index out of range$" }
+rule = "Positions (indexes) start at 0, so something with 3 items has indexes 0, 1 and 2. The last item is at `len(x) - 1`, or simply `x[-1]`."
+why = "Python counts positions from 0 because an index means \"how many steps from the start\". The first item is 0 steps away, so an index equal to the length is one step past the end."
+hints = [
+  "How many items does `{container_text}` have at this point, and which index is used?",
+  "Indexes start at 0, so the last valid index is one less than the length.",
+  "Check the index on line {line}. If it comes from a loop, check the loop's `range`.",
+]
+examples = [
+  { source = "letters = [\"a\", \"b\", \"c\"]\nprint(letters[3])\n" },
+  { source = "nums = [4, 5]\nfor i in range(len(nums) + 1):\n    print(nums[i])\n" },
+]
+
+[[card]]
+id = "key-missing"
+title = "The dictionary has no key {key}"
+match = { code = "KeyError" }
+rule = "`d[key]` only works for keys that are in the dictionary. Check first with `key in d`, or use `d.get(key)`, which gives `None` (or a default you choose) instead of an error."
+why = "A missing key usually means a typo or data you didn't expect, so Python stops and shows you the exact key, {key}, instead of quietly making up a value."
+hints = [
+  "Which keys does the dictionary actually have when line {line} runs?",
+  "Check the spelling and capital letters of {key}: keys must match exactly.",
+  "Use `in` to check the key exists, or `.get()` to supply a default.",
+]
+examples = [
+  { source = "ages = {\"Ana\": 12}\nprint(ages[\"Bob\"])\n" },
+]
+
+[[card]]
+id = "none-from-inplace-method"
+title = "`{none_name}` is `None` because `.{inplace_method}()` returns `None`"
+match = { code = "AttributeError", when = { inplace_method = true } }
+priority = 10
+rule = "Methods such as `.sort()`, `.append()` and `.reverse()` change the object itself and give back `None`. Call them on their own line, without `=`."
+why = "Python makes in-place methods return `None` on purpose, so you can't mistake them for ones that make a new copy. On line {inplace_line}, `{none_name}` was set to that `None`. To get a new sorted list instead, use `sorted(...)`."
+hints = [
+  "What value did `{none_name}` get on line {inplace_line}?",
+  "`.{inplace_method}()` changes the object it's called on and returns `None`.",
+  "Call `.{inplace_method}()` on its own line, then keep using the original variable.",
+]
+related = ["none-attribute"]
+examples = [
+  { source = "numbers = [3, 1, 2]\nordered = numbers.sort()\nordered.append(4)\n" },
+]
+
+[[card]]
+id = "none-attribute"
+title = "`None` has no `.{attribute}`"
+match = { code = "AttributeError", when = { obj_type = "NoneType" } }
+rule = "`None` means \"no value\". A variable is often `None` because a function didn't `return` anything, or because a method changed something in place."
+why = "Every function gives back a value. If it ends without `return`, it gives back `None`, so using its result as if it were a real value fails on the first line that relies on it."
+hints = [
+  "Where does the value before `.{attribute}` on line {line} come from?",
+  "If it comes from a function, does that function `return` anything?",
+  "Make sure the function ends with `return` and the value you want.",
+]
+examples = [
+  { source = "def make_list():\n    items = [1, 2]\n\nresult = make_list()\nresult.append(3)\n" },
+]
+
+[[card]]
+id = "attribute-typo"
+title = "No `.{attribute}` here. Did you mean `.{python_suggestion}`?"
+match = { code = "AttributeError", when = { python_suggestion = true } }
+priority = 5
+rule = "Methods and attributes must be spelled exactly as Python defines them."
+why = "Each type of value has a fixed set of methods. `.{attribute}` isn't one of them for type `{obj_type}`, and Python won't guess between similar names, though it does suggest the closest one."
+hints = [
+  "Check the spelling of `.{attribute}` on line {line}.",
+  "Python found a method with a very similar name.",
+  "Did you mean `.{python_suggestion}`?",
+]
+fix = "replace_attribute:python_suggestion"
+examples = [
+  { source = "word = \"hello\"\nprint(word.uper())\n", after = "print(word.upper())" },
+]
+
+[[card]]
+id = "attribute-missing"
+title = "Values of type `{obj_type}` have no `.{attribute}`"
+match = { code = "AttributeError", when = { attribute = true } }
+rule = "Each type of value has its own methods: lists have `.append()`, text has `.upper()`, and so on. A method from one type, or from another language, doesn't exist on another."
+why = "When you write `x.{attribute}`, Python looks for `{attribute}` on the type of `x`, which here is `{obj_type}`. It isn't there, so Python stops rather than guess what you meant."
+hints = [
+  "What type of value comes before the `.` on line {line}?",
+  "Does type `{obj_type}` have a method called `{attribute}`? For example, Python lists use `.append()`, not `.push()`.",
+  "Look up the methods of type `{obj_type}`, for example with `help({obj_type})`.",
+]
+examples = [
+  { source = "items = [1, 2]\nitems.push(3)\n" },
+]

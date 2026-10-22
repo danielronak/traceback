@@ -1,0 +1,169 @@
+# Names that Python can't find (orange): one card per cause, not per error type.
+# Ordered from the most specific cause to the generic fallback.
+
+[[card]]
+id = "name-typo"
+title = "`{name}` is not defined. Did you mean `{similar_name}`?"
+match = { code = "NameError", when = { similar_name = true } }
+priority = 50
+rule = "Python only knows the names you've created. A name spelled even slightly differently is a completely new, unknown name."
+why = "Python can't guess what you meant, because a near-miss could just as well be a different variable you forgot to create. Names are also case-sensitive: `total` and `Total` are two different names."
+hints = [
+  "Look closely at how `{name}` is spelled on line {line}.",
+  "Compare it with the names you created earlier. Is one nearly the same?",
+  "Did you mean `{similar_name}`?",
+]
+fix = "replace_name:similar_name"
+related = ["name-undefined"]
+examples = [
+  { source = "total = 0\nfor n in [1, 2, 3]:\n    total += n\nprint(totl)\n", after = "print(total)" },
+  { source = "name = \"Ada\"\nprint(Name)\n", after = "print(name)" },
+]
+
+[[card]]
+id = "builtin-typo"
+title = "`{name}` is not defined. Did you mean `{builtin_name}`?"
+match = { code = "NameError", when = { builtin_name = true } }
+priority = 40
+rule = "Python's built-in functions, such as `print`, `input` and `len`, must be spelled exactly, in lowercase."
+why = "Built-ins are names Python creates for you before your program starts. A misspelling such as `{name}` is a different name that nothing has created."
+hints = [
+  "Look closely at how `{name}` is spelled on line {line}.",
+  "It looks like one of Python's built-in functions, spelled differently.",
+  "Did you mean `{builtin_name}`?",
+]
+fix = "replace_name:builtin_name"
+examples = [
+  { source = "pritn(\"hello\")\n", after = "print(\"hello\")" },
+  { source = "Print(\"hi\")\n", after = "print(\"hi\")" },
+]
+
+[[card]]
+id = "missing-import"
+title = "`{name}` needs to be imported first"
+match = { code = "NameError", when = { module = true } }
+priority = 30
+rule = "Modules from Python's standard library, such as `math` and `random`, have to be imported before you use them: `import {module}`."
+why = "Python comes with hundreds of modules. Loading them all every time would make every program slow to start, so you ask for the ones you need with `import`, usually at the top of the file."
+hints = [
+  "`{name}` is the name of a module that comes with Python.",
+  "Modules aren't available until your program imports them.",
+  "Add `import {module}` at the top of your file.",
+]
+fix = "add_import"
+examples = [
+  { source = "print(math.sqrt(16))\n", after = "import math" },
+  { source = "import time\nprint(random.randint(1, 6))\n", after = "import random" },
+]
+
+[[card]]
+id = "used-before-assignment"
+title = "`{name}` is used before it's created"
+match = { code = "NameError", when = { defined_later = true } }
+priority = 20
+rule = "Python runs your program from top to bottom, so a variable or function must be created before the line that uses it."
+why = "When Python reaches line {line}, the line that creates `{name}` hasn't run yet, so at that moment the name doesn't exist. Python doesn't look ahead in your file."
+hints = [
+  "Where is `{name}` created? Is that before or after line {line}?",
+  "Python runs the lines in order, top to bottom.",
+  "Move the line that creates `{name}` above line {line}.",
+]
+examples = [
+  { source = "print(score)\nscore = 10\n" },
+  { source = "greet()\n\ndef greet():\n    print(\"hi\")\n" },
+]
+
+[[card]]
+id = "name-in-function"
+title = "`{name}` only exists inside `{defined_in_function}()`"
+match = { code = "NameError", when = { defined_in_function = true } }
+priority = 15
+rule = "A variable created inside a function is local: it exists only while that function runs and can't be seen from outside it."
+why = "Keeping each function's variables private means functions can't accidentally overwrite each other's values. To get a value out of a function, `return` it and store the result where you call it."
+hints = [
+  "Where is `{name}` created? Is that inside a function?",
+  "Variables made inside `{defined_in_function}()` disappear when it finishes.",
+  "Make `{defined_in_function}()` end with `return {name}`, and store what it returns: `{name} = {defined_in_function}()`.",
+]
+examples = [
+  { source = "def make_total():\n    total = 10\n\nmake_total()\nprint(total)\n" },
+]
+
+[[card]]
+id = "name-meant-string"
+title = "Did you mean the text `\"{name}\"`?"
+match = { code = "NameError", when = { in_print = true, word_like = true, defined_anywhere = false, similar_name = false, builtin_name = false, module = false } }
+priority = 10
+rule = "Text goes inside quote marks: `print(\"{name}\")`. Without quotes, Python reads `{name}` as the name of a variable."
+why = "Quotes are how Python tells data (text you want to show) apart from code (the names of things in your program). Without them `{name}` looks like a variable name, and no variable has that name."
+hints = [
+  "Is `{name}` on line {line} meant to be a variable, or words to show?",
+  "Python treats a word without quotes as the name of a variable.",
+  "Put quotes around it: `\"{name}\"`.",
+]
+fix = "quote_name"
+examples = [
+  { source = "print(hello)\n", after = "print(\"hello\")" },
+]
+
+[[card]]
+id = "name-undefined"
+title = "`{name}` is not defined"
+match = { code = "NameError" }
+rule = "Python only knows the names you've created (with `=`, `def`, `for` or `import`) and its own built-in names."
+why = "A name has to be created before it's used, so Python can be sure what it refers to. If Python can't find the name anywhere, it stops rather than guess."
+hints = [
+  "Where did you expect `{name}` to be created?",
+  "Check the spelling, and check that the line creating it runs before line {line}.",
+  "Create `{name}` with a value before line {line}, or use the name you meant.",
+]
+examples = [
+  { source = "y = x + 1\n" },
+]
+
+[[card]]
+id = "unbound-local"
+title = "`{name}` is changed inside `{function}()`, so Python treats it as a new local variable"
+match = { code = "UnboundLocalError", when = { global_defined = true } }
+rule = "If a function assigns to a variable anywhere in its body (including with `+=`), that variable is local to the function everywhere in the function."
+why = "Python decides which variables are local before the function runs, by looking for assignments. `{name}` is assigned inside `{function}()`, so there it means a new local variable, not the `{name}` outside, and that local one has no value yet on line {line}."
+hints = [
+  "Line {line} uses `{name}`, which is created outside `{function}()` but also changed inside it.",
+  "Changing a variable inside a function makes it a separate, local variable.",
+  "Give `{function}()` a parameter for the value and `return` the new value. (Writing `global {name}` also works, but makes programs harder to follow.)",
+]
+examples = [
+  { source = "count = 0\n\ndef add_one():\n    count += 1\n\nadd_one()\n" },
+]
+
+[[card]]
+id = "module-typo"
+title = "There's no module called `{module}`. Did you mean `{similar_module}`?"
+match = { code = "ModuleNotFoundError", when = { similar_module = true } }
+rule = "Module names must be spelled exactly, and they're usually all lowercase: `math`, `random`, `time`."
+why = "`import` looks for a module with exactly the name you wrote. `{similar_module}` exists, but `{module}` doesn't, and Python won't guess between them."
+hints = [
+  "Check how `{module}` is spelled on line {line}.",
+  "Module names are case-sensitive and usually lowercase.",
+  "Did you mean `{similar_module}`?",
+]
+fix = "replace_module:similar_module"
+examples = [
+  { source = "import Random\nprint(Random.randint(1, 6))\n", after = "import random" },
+  { source = "import maths\n", after = "import math" },
+]
+
+[[card]]
+id = "module-not-found"
+title = "There's no module called `{module}`"
+match = { code = "ModuleNotFoundError" }
+rule = "`import` can only load modules that are available: Python's standard library (such as `math`, `random` and `time`) or packages that have been installed."
+why = "Python looked for `{module}` in its standard library and in the installed packages, and didn't find it. Usually that means the name is misspelled, or the package isn't installed here."
+hints = [
+  "Check the spelling of `{module}` on line {line}.",
+  "Is `{module}` part of Python's standard library, or a separate package?",
+  "Fix the name, or use a module that's available here.",
+]
+examples = [
+  { source = "import numpyy\n" },
+]

@@ -1,0 +1,178 @@
+# Values used with the wrong type (orange): TypeError and ValueError.
+
+[[card]]
+id = "input-is-string"
+title = "`{input_name}` holds text from `input()`, not a number"
+match = { code = "TypeError", message = "^(can only concatenate str|unsupported operand type)", when = { input_name = true } }
+rule = "`input()` always gives back text (a `str`), even when the user types digits. Convert it with `int()` or `float()` before doing maths with it."
+why = "Python can't know what the user will type: `42`, `forty-two`, or nothing at all. So `input()` returns exactly the characters typed and leaves it to you to say whether they should be a number."
+hints = [
+  "Where does `{input_name}` get its value? Look at line {input_line}.",
+  "What type does `input()` give back, even when someone types `5`?",
+  "Wrap the `input(...)` on line {input_line} in `int(...)`.",
+]
+fix = "int_input"
+related = ["str-plus-int", "int-conversion"]
+examples = [
+  { source = "age = input(\"Age? \")\nprint(age + 1)\n", inputs = ["14"], after = "age = int(input(\"Age? \"))" },
+  { source = "n = input()\ntotal = 10 * 2 + n\n", inputs = ["3"], after = "n = int(input())" },
+]
+
+[[card]]
+id = "str-plus-int"
+title = "`+` can't join text with a value of type `{right_type}` (line {line})"
+match = { code = "TypeError", message = "^can only concatenate str \\(not \"" }
+rule = "`+` joins text to text, or adds numbers to numbers. To put a number into text, convert it with `str()`, or use an f-string: `f\"Age: {{age}}\"`."
+why = "Python won't guess whether `\"3\" + 4` should be `\"34\"` or `7`. Each type decides what `+` means for itself, and text only knows how to join with more text, so mixing them is an error instead of a silent surprise."
+hints = [
+  "What type of value is on each side of the `+` on line {line}?",
+  "The left side is text (type `str`) and the right side is of type `{right_type}`.",
+  "Turn the right side into text with `str(...)`, or use an f-string.",
+]
+fix = "str_right_operand"
+related = ["input-is-string"]
+examples = [
+  { source = "age = 15\nprint(\"Age: \" + age)\n", after = "print(\"Age: \" + str(age))" },
+]
+
+[[card]]
+id = "called-shadowed-builtin"
+title = "`{called_name}` no longer refers to Python's `{called_name}()`"
+match = { code = "TypeError", message = "is not callable$", when = { shadowed_builtin = true } }
+rule = "Don't use the names of built-in functions (such as `list`, `sum`, `max` or `input`) for your own variables."
+why = "Built-in names aren't protected. Assigning to `{called_name}` makes it point at your value instead, so a later `{called_name}(...)` tries to call that value (of type `{obj_type}`) as if it were a function."
+hints = [
+  "Where else in your program is `{called_name}` given a value?",
+  "Assigning to `{called_name}` replaced Python's built-in function with your value.",
+  "Rename your variable to something that describes it, so `{called_name}` means the built-in again.",
+]
+related = ["builtin-shadowed"]
+examples = [
+  { source = "sum = 0\nfor n in [1, 2]:\n    sum += n\nprint(sum([3, 4]))\n" },
+]
+
+[[card]]
+id = "not-callable"
+title = "A value of type `{obj_type}` can't be called like a function"
+match = { code = "TypeError", message = "is not callable$" }
+rule = "Round brackets straight after something mean \"call it\": `name(...)`. Only functions (and things like classes) can be called."
+why = "To Python, `x(...)` always means \"run x\". A value of type `{obj_type}` is data, not something that can be run, so Python can't do what the brackets ask."
+hints = [
+  "What comes straight before the `(` on line {line}?",
+  "That's a value of type `{obj_type}`, not a function. Did you mean to multiply with `*`?",
+  "In Python, multiplication is always written with `*`: `price * 2`, not `price(2)`.",
+]
+examples = [
+  { source = "price = 10\ntotal = price(2)\n" },
+]
+
+[[card]]
+id = "brackets-for-call"
+title = "Use `( )`, not `[ ]`, to call `{subscript_value}`"
+match = { code = "TypeError", message = "is not subscriptable$", when = { is_function = true } }
+rule = "Round brackets call a function: `len(word)`. Square brackets pick an item from a list, string or dictionary: `word[0]`."
+why = "`[ ]` asks a value for one of its items, and a function doesn't have items. `name[...]` and `name(...)` mean different things, so Python won't guess which you meant."
+hints = [
+  "Look at the brackets after `{subscript_value}` on line {line}.",
+  "Square brackets pick an item; round brackets call a function.",
+  "Change the `[ ]` after `{subscript_value}` to `( )`.",
+]
+fix = "brackets_to_call"
+examples = [
+  { source = "word = \"hello\"\nprint(len[word])\n", after = "print(len(word))" },
+]
+
+[[card]]
+id = "not-subscriptable"
+title = "A value of type `{obj_type}` has no items to pick with `[ ]`"
+match = { code = "TypeError", message = "is not subscriptable$" }
+rule = "Square brackets pick an item from something that holds items: a list, a string, a tuple or a dictionary. Single values, such as numbers, don't hold items."
+why = "`x[0]` asks for the first item of `x`. A value of type `{obj_type}` is a single value, so there's no first item to give back. Often the variable holds a different value from the one you expect at this point."
+hints = [
+  "What value does the variable before `[` hold when line {line} runs?",
+  "It's of type `{obj_type}`, which doesn't contain items.",
+  "To get the digits of a number, turn it into text first: `str(n)[0]`.",
+]
+examples = [
+  { source = "year = 2024\nprint(year[0])\n" },
+]
+
+[[card]]
+id = "int-not-iterable"
+title = "Use `range()` to loop a number of times"
+match = { code = "TypeError", message = "^'int' object is not iterable", when = { in_for = true } }
+rule = "A `for` loop goes through the items of something: a list, a string, or a `range`. To repeat something 5 times, loop over `range(5)`."
+why = "`for` asks a value for its items, one at a time. A number is a single value with no items, so there's nothing to go through. `range(5)` turns the number into the sequence 0, 1, 2, 3, 4."
+hints = [
+  "What does the `for` loop on line {line} go through?",
+  "A number has no items to loop over. What turns a number into a sequence of numbers?",
+  "Loop over `range(...)` of that number.",
+]
+fix = "wrap_range"
+examples = [
+  { source = "for i in 5:\n    print(i)\n", after = "for i in range(5):" },
+  { source = "names = [\"Ana\", \"Bo\"]\nfor i in len(names):\n    print(names[i])\n", after = "for i in range(len(names)):" },
+]
+
+[[card]]
+id = "str-immutable"
+title = "Text can't be changed in place"
+match = { code = "TypeError", message = "^'str' object does not support item assignment" }
+rule = "Strings are immutable: once made, their characters can't be changed. Build a new string instead, for example with slicing or `.replace()`."
+why = "Because a string never changes, Python can safely share it between variables and use it as a dictionary key. The trade-off is that `word[0] = \"b\"` isn't allowed; you write `word = \"b\" + word[1:]` to make a new string."
+hints = [
+  "Line {line} tries to change one character of a string.",
+  "Strings can't be changed, but you can make a new one.",
+  "Build a new string from pieces, for example `\"b\" + word[1:]`, and store it.",
+]
+examples = [
+  { source = "word = \"cat\"\nword[0] = \"b\"\n" },
+]
+
+[[card]]
+id = "missing-argument"
+title = "`{function}()` needs a value for {missing_args}"
+match = { code = "TypeError", message = "missing \\d+ required" }
+rule = "When you call a function, give it one value for each parameter in its `def` line, unless that parameter has a default."
+why = "Inside the function, {missing_args} would have no value, and Python won't make one up. It stops at the call so you can see which values are missing."
+hints = [
+  "Look at the `def` line of `{function}`. How many parameters does it have?",
+  "Now count the values given to `{function}()` on line {line}.",
+  "Add a value for {missing_args} to the call.",
+]
+examples = [
+  { source = "def greet(name):\n    print(\"Hi \" + name)\n\ngreet()\n" },
+]
+
+[[card]]
+id = "int-conversion-decimal"
+title = "`int()` can't read the decimal number {value}"
+match = { code = "ValueError", when = { target_type = "int", value_is_decimal = true } }
+rule = "`int()` only reads whole numbers from text. For text like {value}, use `float()`, or `int(float(...))` to drop the decimals."
+why = "Text like {value} might be a precise amount, so `int()` refuses rather than silently throwing away the part after the decimal point."
+hints = [
+  "The text {value} contains a decimal point.",
+  "`int()` only understands whole numbers written as text.",
+  "Use `float(...)` instead of `int(...)`.",
+]
+related = ["int-conversion"]
+examples = [
+  { source = "price = int(\"3.50\")\n" },
+]
+
+[[card]]
+id = "int-conversion"
+title = "{value} can't be turned into a number"
+match = { code = "ValueError", when = { target_type = true } }
+rule = "`int()` only converts text made of digits, such as `\"42\"`, and `float()` also accepts decimals, such as `\"3.5\"`. Other text can't be converted."
+why = "Converting text to a number only works when the text really is a number. Python shows you the exact text it was given, {value}, rather than guessing a number."
+hints = [
+  "Python shows what `{target_type}()` was given: {value}.",
+  "Check what the user typed or what the variable held. Letters, spaces inside the number, and empty text can't be converted.",
+  "Make sure the text is a number before converting it.",
+]
+related = ["input-is-string"]
+examples = [
+  { source = "age = int(\"twelve\")\n" },
+  { source = "n = int(input(\"Number: \"))\n", inputs = [""] },
+]

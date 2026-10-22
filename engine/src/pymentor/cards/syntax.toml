@@ -1,0 +1,223 @@
+# Syntax errors: Python can't compile the file, so nothing runs (red).
+# Placeholders like {line} are filled from the diagnostic and its features;
+# write literal braces as {{ and }}. See CLAUDE.md for how to add a card.
+
+[[card]]
+id = "missing-colon"
+title = "Missing colon on line {line}"
+match = { code = "SyntaxError", message = "^expected ':'$" }
+rule = "Every line that starts a block (`if`, `elif`, `else`, `for`, `while`, `def`, `class`, `try`, `except`, `with`) ends with a colon."
+why = "Python groups code by indentation instead of curly braces. The colon is the signal that a new indented group is starting, so Python knows the indented lines below belong to this `{keyword}`."
+hints = [
+  "Look at the very end of line {line}.",
+  "What does Python need to see at the end of the `{keyword}` line before an indented block can start?",
+  "Add a `:` at the end of line {line}.",
+]
+fix = "insert_colon"
+related = ["indent-expected"]
+examples = [
+  { source = "scores = [72, 85, 90]\nif len(scores) > 2\n    print(\"Enough scores\")\n", after = "if len(scores) > 2:" },
+  { source = "def greet(name)\n    print(name)\n", after = "def greet(name):" },
+  { source = "for n in range(3)  # count to three\n    print(n)\n", after = "for n in range(3):  # count to three" },
+]
+
+[[card]]
+id = "assign-in-condition"
+title = "`=` used where `==` was meant on line {line}"
+match = { code = "SyntaxError", message = "Maybe you meant '==' or ':=' instead of '='" }
+rule = "`=` stores a value in a variable. `==` asks whether two values are equal. A condition needs the question, so it uses `==`."
+why = "Python keeps the two jobs apart so a typo can't silently change a variable when you meant to compare it. In some languages `if x = 5` quietly stores 5 in `x` and counts as true. Python refuses to run it instead."
+hints = [
+  "Look at the `=` on line {line}. Is it storing a value, or comparing two?",
+  "Python has one symbol for \"store this\" and a different one for \"is this equal to?\".",
+  "Use `==` to compare: change `=` to `==` on line {line}.",
+]
+fix = "assign_to_equals"
+examples = [
+  { source = "x = 5\nif x = 5:\n    print(\"five\")\n", after = "if x == 5:" },
+  { source = "answer = \"yes\"\nwhile answer = \"yes\":\n    answer = input()\n", after = "while answer == \"yes\":" },
+]
+
+[[card]]
+id = "indent-expected"
+title = "Line {line} should be indented inside the `{header_kind}` block"
+match = { code = "IndentationError", message = "^expected an indented block" }
+rule = "After a line that ends with a colon, the lines that belong to that block must be indented, usually by 4 spaces."
+why = "Indentation is how Python knows which lines are inside the `{header_kind}` on line {header_line} and which come after it. Without it, Python sees a block with nothing inside, which isn't allowed."
+hints = [
+  "Line {header_line} ends with a colon, so Python expects indented lines to follow.",
+  "Which lines should belong to the `{header_kind}` on line {header_line}? Those lines need to be indented.",
+  "Indent line {line} by 4 spaces.",
+]
+exceptions = "To leave a block empty on purpose, for example while you're still writing it, put `pass` inside it."
+fix = "indent_line"
+related = ["missing-colon", "unexpected-indent"]
+examples = [
+  { source = "age = 20\nif age >= 18:\nprint(\"adult\")\n", after = "    print(\"adult\")" },
+  { source = "def greet():\nprint(\"hi\")\n", after = "    print(\"hi\")" },
+]
+
+[[card]]
+id = "unexpected-indent"
+title = "Unexpected indentation on line {line}"
+match = { code = "IndentationError", message = "^unexpected indent$" }
+rule = "Only lines inside a block (after a line ending with a colon) are indented further. Any other line starts at the same level as the line before it."
+why = "In Python, indentation isn't decoration: it means \"this line belongs to the block above\". Line {line} is indented, but there is no block for it to belong to, so Python can't tell what you meant."
+hints = [
+  "Compare how far line {line} is indented with the line above it.",
+  "Does the line above line {line} end with a colon? If not, line {line} shouldn't be indented more than it.",
+  "Remove the extra spaces at the start of line {line}.",
+]
+fix = "dedent_line"
+related = ["indent-expected", "unindent-mismatch"]
+examples = [
+  { source = "name = \"Ada\"\n    print(name)\n", after = "print(name)" },
+]
+
+[[card]]
+id = "unindent-mismatch"
+title = "Line {line} doesn't line up with any block"
+match = { code = "IndentationError", message = "^unindent does not match any outer indentation level" }
+rule = "When a block ends, the next line must line up exactly with an earlier line, using the same number of spaces."
+why = "Python decides which block a line belongs to by counting its leading spaces. Line {line} is indented by an amount that matches none of the blocks it could be returning to, so Python can't tell where it belongs."
+hints = [
+  "Count the spaces at the start of line {line}.",
+  "Find the line it should line up with, such as the `if` or `for` it comes after, and count the spaces before that line.",
+  "Make line {line} start with exactly the same number of spaces as that line.",
+]
+related = ["unexpected-indent", "tabs-and-spaces"]
+examples = [
+  { source = "if True:\n        x = 1\n    y = 2\n" },
+]
+
+[[card]]
+id = "tabs-and-spaces"
+title = "Tabs and spaces are mixed in the indentation on line {line}"
+match = { code = "TabError" }
+rule = "Indent with spaces only, 4 per level. Don't mix tabs and spaces in one file."
+why = "A tab can look like 2, 4 or 8 spaces depending on the editor, so indentation that looks lined up to you can be ambiguous to Python. Rather than guess, Python refuses to run the file."
+hints = [
+  "The indentation on line {line} may look fine, but it's made of different characters from the lines around it.",
+  "Some lines are indented with a tab and others with spaces.",
+  "Re-indent the file using spaces only.",
+]
+fix = "expand_tabs"
+examples = [
+  { source = "if True:\n\tx = 1\n        y = 2\n", after = "        x = 1" },
+]
+
+[[card]]
+id = "unterminated-string"
+title = "The text on line {line} is missing its closing quote"
+match = { code = "SyntaxError", message = "^unterminated string literal" }
+rule = "Text (a string) starts and ends with the same quote mark: `'like this'` or `\"like this\"`."
+why = "Python reads everything after an opening quote as text until it finds the matching closing quote. If the line ends first, Python can't tell where your text was meant to stop, so it can't read the rest of the line as code."
+hints = [
+  "Find where the text on line {line} starts with a `{quote}`.",
+  "Where should that text end? Python needs the same quote mark there.",
+  "Add a closing `{quote}` where the text ends.",
+]
+fix = "close_string"
+examples = [
+  { source = "print('hello)\n", after = "print('hello')" },
+  { source = "name = \"Ada\nprint(name)\n", after = "name = \"Ada\"" },
+]
+
+[[card]]
+id = "bracket-never-closed"
+title = "The `{bracket}` on line {line} is never closed"
+match = { code = "SyntaxError", message = "was never closed$" }
+rule = "Every opening bracket `(`, `[` or `{{` needs a matching closing bracket `)`, `]` or `}}`."
+why = "Brackets let one expression run over several lines, so when one is left open Python keeps reading the following lines as part of it. That's why it points back at the bracket that started the problem, which can be lines away from where things look wrong."
+hints = [
+  "Python is pointing at the `{bracket}` on line {line}.",
+  "Count the opening and closing brackets on line {line}. Is one missing?",
+  "Add a `{closer}` where the expression on line {line} should end.",
+]
+fix = "close_bracket"
+related = ["bracket-unmatched", "bracket-mismatch"]
+examples = [
+  { source = "print('a'\nx = 1\n", after = "print('a')" },
+  { source = "total = sum([1, 2, 3]\nprint(total)\n", after = "total = sum([1, 2, 3])" },
+]
+
+[[card]]
+id = "bracket-unmatched"
+title = "Extra `{bracket}` on line {line}"
+match = { code = "SyntaxError", message = "^unmatched '" }
+rule = "Every closing bracket needs an opening bracket of the same kind before it."
+why = "Python pairs each closing bracket with the most recent unclosed opening one. This `{bracket}` has nothing left to pair with, so Python can't tell what it was meant to close."
+hints = [
+  "Count the opening and closing brackets on line {line}.",
+  "There is one more `{bracket}` than there are opening brackets for it.",
+  "Remove the extra `{bracket}` on line {line}.",
+]
+fix = "remove_bracket"
+related = ["bracket-never-closed"]
+examples = [
+  { source = "print(len('hi')))\n", after = "print(len('hi'))" },
+]
+
+[[card]]
+id = "bracket-mismatch"
+title = "`{closer}` on line {line} doesn't match the `{opener}` it closes"
+match = { code = "SyntaxError", message = "^closing parenthesis '.' does not match opening parenthesis" }
+rule = "Brackets close in pairs of the same kind: `(` with `)`, `[` with `]`, and `{{` with `}}`."
+why = "Each kind of bracket means something different: `()` calls a function or groups a calculation, `[]` makes a list or picks an item, and `{{}}` makes a dictionary or set. Mixing them up would make the meaning unclear, so Python insists they match."
+hints = [
+  "Look at the brackets on line {line}. Which opening bracket does the `{closer}` close?",
+  "That bracket is a `{opener}`, so it needs a `{expected_closer}`.",
+  "Change the `{closer}` to `{expected_closer}`.",
+]
+fix = "swap_bracket"
+related = ["bracket-never-closed"]
+examples = [
+  { source = "numbers = [1, 2, 3)\n", after = "numbers = [1, 2, 3]" },
+]
+
+[[card]]
+id = "print-statement"
+title = "`print` needs round brackets on line {line}"
+match = { code = "SyntaxError", message = "^Missing parentheses in call to 'print'" }
+rule = "`print` is a function, so what you want to show goes inside round brackets: `print(\"hi\")`."
+why = "In Python 2, `print` was a special statement written without brackets. Python 3 made it an ordinary function, like `len()` or `input()`, so it follows the same rules as every other function call. Some older tutorials still show the old style."
+hints = [
+  "How do you call other functions, like `len` or `input`?",
+  "Functions need round brackets around what you give them.",
+  "Put brackets around what you're printing: `print(...)`.",
+]
+fix = "print_call"
+examples = [
+  { source = "print 'hello'\n", after = "print('hello')" },
+]
+
+[[card]]
+id = "missing-comma"
+title = "Missing comma on line {line}"
+match = { code = "SyntaxError", message = "Perhaps you forgot a comma\\?" }
+rule = "Items in a list, tuple or set, and the values you give a function, are separated by commas: `[1, 2, 3]`, `print(a, b)`."
+why = "Without a comma Python sees two values side by side with nothing saying how they relate. Should they be added, compared, or kept as separate items? Python won't guess, so every separate item needs a comma."
+hints = [
+  "Look at the items on line {line}.",
+  "Two values are written side by side with nothing between them.",
+  "Put a comma between each pair of items.",
+]
+examples = [
+  { source = "numbers = [1 2 3]\n" },
+  { source = "print(\"Total:\" total)\n" },
+]
+
+[[card]]
+id = "keyword-as-name"
+title = "`{keyword_as_name}` can't be used as a variable name"
+match = { code = "SyntaxError", message = "^invalid syntax$", when = { keyword_as_name = true } }
+rule = "Keywords such as `class`, `for`, `if`, `def`, `return`, `import` and `in` are reserved by Python and can't be used as variable names."
+why = "Python reads keywords as instructions, so `{keyword_as_name} = ...` looks to Python like a `{keyword_as_name}` instruction written wrongly. Reserving these words keeps Python's grammar unambiguous."
+hints = [
+  "`{keyword_as_name}` is one of Python's keywords.",
+  "Keywords are reserved for Python's own instructions.",
+  "Pick another name, such as `{keyword_as_name}_name`. Python programmers sometimes add an underscore: `{keyword_as_name}_`.",
+]
+examples = [
+  { source = "class = \"Year 9\"\nprint(class)\n" },
+]

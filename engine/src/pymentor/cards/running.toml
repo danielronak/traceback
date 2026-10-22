@@ -1,0 +1,77 @@
+# Programs that crash or never finish while running (orange).
+
+[[card]]
+id = "zero-division"
+title = "Division by zero on line {line}"
+match = { code = "ZeroDivisionError" }
+rule = "You can't divide by zero with `/`, `//` or `%`. Check that the number you divide by isn't 0 first."
+why = "Dividing by zero has no answer in maths, so Python stops instead of producing a wrong number. Often the zero comes from an empty list or a counter that never went up."
+hints = [
+  "What number is being divided by on line {line}?",
+  "Where does that number get its value? Could it still be 0 here?",
+  "Check for zero first, for example `if count != 0:`.",
+]
+examples = [
+  { source = "count = 0\nprint(10 / count)\n" },
+]
+
+[[card]]
+id = "recursion-limit"
+title = "`{function}()` keeps calling itself and never stops"
+match = { code = "RecursionError" }
+rule = "A function that calls itself (recursion) needs a base case: a situation where it returns without calling itself again. Each call must move closer to that case."
+why = "Every call waits for the call it made to finish, and Python keeps a list of the waiting calls. Without a base case the list grows forever, so Python stops after about a thousand calls instead of running out of memory."
+hints = [
+  "When should `{function}()` stop calling itself?",
+  "Is there an `if` that returns without calling `{function}()` again?",
+  "Add a base case, for example `if n == 0: return`, before the call on line {line}.",
+]
+examples = [
+  { source = "def countdown(n):\n    print(n)\n    countdown(n - 1)\n\ncountdown(3)\n" },
+]
+
+[[card]]
+id = "loop-condition-unchanged"
+title = "The `while` loop on line {loop_line} never ends: `{unchanged_names}` never changes"
+match = { code = "Timeout", when = { unchanged_names = true } }
+rule = "A `while` loop repeats as long as its condition is true, so something inside the loop must change until the condition becomes false."
+why = "Python checks the condition again before every repeat. Nothing in the loop changes `{unchanged_names}`, so the condition gives the same answer every time and the loop would run forever. Python stopped it so you can fix it."
+hints = [
+  "What has to happen for the condition on line {loop_line} to become false?",
+  "Does anything inside the loop change `{unchanged_names}`?",
+  "Update `{unchanged_names}` inside the loop, for example with `+= 1`.",
+]
+related = ["infinite-loop"]
+examples = [
+  { source = "count = 0\nwhile count < 5:\n    print(count)\n" },
+]
+
+[[card]]
+id = "infinite-loop"
+title = "The loop on line {loop_line} doesn't seem to end"
+match = { code = "Timeout", when = { loop_line = true } }
+rule = "Every loop needs a way to finish: a `while` condition that eventually becomes false, or a `break`."
+why = "Python ran this loop far longer than a program like this normally needs, so it stopped it. Usually the loop's condition can never become false, for example because a counter jumps past the value it's compared with."
+hints = [
+  "What has to happen for the loop on line {loop_line} to finish?",
+  "Follow the values in the condition by hand for a few repeats. Do they ever make it false?",
+  "Change the condition or the update so the loop can end, for example `<` instead of `!=`.",
+]
+examples = [
+  { source = "n = 10\nwhile n != 0:\n    n -= 3\n" },
+]
+
+[[card]]
+id = "input-exhausted"
+title = "The program asked for more input than it was given"
+match = { code = "EOFError", when = { input_exhausted = true } }
+rule = "Each call to `input()` reads one answer. The program needs one answer for every `input()` that runs."
+why = "Line {line} called `input()`, but all the answers given had already been used, so there was nothing left to read."
+hints = [
+  "How many times does `input()` run before line {line}?",
+  "Count the answers that were given to the program.",
+  "Give one more answer, or check whether a loop asks for input more times than you expect.",
+]
+examples = [
+  { source = "a = input()\nb = input()\n", inputs = ["1"] },
+]

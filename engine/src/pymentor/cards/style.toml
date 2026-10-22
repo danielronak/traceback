@@ -1,0 +1,102 @@
+# Style (blue): the code works, but doesn't read like Python. Never blocking.
+
+[[card]]
+id = "naming-variable"
+title = "Variable names are written in snake_case: `{suggested_name}`"
+match = { code = "naming-variable" }
+rule = "Python variable names use lowercase words joined by underscores (snake_case), such as `total_score`. Names in ALL_CAPS are kept for constants."
+why = "This convention comes from PEP 8, Python's style guide. Your code works either way, but following it lets other Python programmers read your code at a glance: a Capitalised name tells a reader \"this is a class\"."
+hints = [
+  "Look at how `{name}` is written on line {line}.",
+  "Python variable names are all lowercase, with underscores between words.",
+  "Rename `{name}` to `{suggested_name}`.",
+]
+fix = "rename:suggested_name"
+related = ["naming-function", "naming-class"]
+examples = [
+  { source = "scores = [72, 85, 90]\nTotal = sum(scores)\nprint(Total)\n", after = "total = sum(scores)\nprint(total)" },
+  { source = "myAge = 14\n", after = "my_age = 14" },
+]
+
+[[card]]
+id = "naming-function"
+title = "Function names are written in snake_case: `{suggested_name}`"
+match = { code = "naming-function" }
+rule = "Python function names use lowercase words joined by underscores (snake_case), such as `calculate_total`."
+why = "This convention comes from PEP 8, Python's style guide. It works either way, but it means that anyone reading Python can tell functions and variables (lowercase) from classes (Capitalised) at a glance."
+hints = [
+  "Look at how the function `{name}` is named on line {line}.",
+  "Python function names are all lowercase, with underscores between words.",
+  "Rename `{name}` to `{suggested_name}` everywhere it's used.",
+]
+fix = "rename:suggested_name"
+related = ["naming-variable"]
+examples = [
+  { source = "def CalculateTotal(prices):\n    return sum(prices)\n\nprint(CalculateTotal([1, 2]))\n", after = "def calculate_total(prices):\n    return sum(prices)\n\nprint(calculate_total([1, 2]))" },
+]
+
+[[card]]
+id = "naming-class"
+title = "Class names are written in CapWords: `{suggested_name}`"
+match = { code = "naming-class" }
+rule = "Python class names start each word with a capital letter and have no underscores (CapWords), such as `BankAccount`."
+why = "This convention comes from PEP 8, Python's style guide. Because classes are named differently from everything else, `Dog()` reads as \"make a new Dog\", while `dog` reads as an ordinary variable."
+hints = [
+  "Look at how the class `{name}` is named on line {line}.",
+  "Python class names start each word with a capital letter.",
+  "Rename `{name}` to `{suggested_name}` everywhere it's used.",
+]
+fix = "rename:suggested_name"
+examples = [
+  { source = "class dog:\n    pass\n\npet = dog()\n", after = "class Dog:\n    pass\n\npet = Dog()" },
+]
+
+[[card]]
+id = "builtin-shadowed"
+title = "`{name}` is the name of a built-in function"
+match = { code = "builtin-shadowed" }
+rule = "Don't give your own variables the names of Python's built-in functions, such as `list`, `sum`, `max` or `input`."
+why = "Your variable replaces the built-in for the rest of the file, so a later `{name}(...)` would fail with a confusing error. A name that says what the value is, like `numbers` or `total`, is clearer anyway."
+hints = [
+  "`{name}` is already the name of one of Python's built-in functions.",
+  "Using it for a variable hides the built-in function for the rest of the program.",
+  "Pick a name that describes the value instead.",
+]
+related = ["called-shadowed-builtin"]
+examples = [
+  { source = "list = [1, 2, 3]\n" },
+]
+
+[[card]]
+id = "compare-none"
+title = "Use `is None` instead of `{op} None`"
+match = { code = "compare-none" }
+rule = "To check whether something is `None`, write `x is None` (or `x is not None`)."
+why = "There is only ever one `None`, so the real question is \"is this that exact object?\", which is what `is` asks. A class can change what `==` means, so `is` is both clearer and safer. PEP 8 recommends it."
+hints = [
+  "Look at how line {line} checks for `None`.",
+  "Python has a special operator for checking whether something is `None`.",
+  "Use `is` (or `is not`) instead of `{op}`.",
+]
+fix = "compare_with_is"
+examples = [
+  { source = "result = None\nif result == None:\n    print(\"nothing\")\n", after = "if result is None:" },
+  { source = "result = 1\nif result != None:\n    print(result)\n", after = "if result is not None:" },
+]
+
+[[card]]
+id = "compare-bool"
+title = "No need to compare with `{value}`"
+match = { code = "compare-bool" }
+rule = "A condition is already true or false, so `if done:` says the same as `if done == True:`, and `if not done:` says the same as `if done == False:`."
+why = "`if` already checks whether something is true. Comparing with `True` adds a step that doesn't change the answer, and PEP 8 recommends the shorter form because it reads like English."
+hints = [
+  "Line {line} compares a condition with `{value}`.",
+  "`if` already asks whether something is true.",
+  "Drop the comparison: use `if x:` or `if not x:`.",
+]
+fix = "drop_bool_compare"
+examples = [
+  { source = "done = False\nif done == True:\n    print(\"finished\")\n", after = "if done:" },
+  { source = "done = False\nif done == False:\n    print(\"keep going\")\n", after = "if not done:" },
+]
