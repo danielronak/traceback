@@ -1,4 +1,5 @@
-import { createReadStream, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { createReadStream, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import preact from "@preact/preset-vite";
@@ -50,8 +51,33 @@ function pyodideAssets(): Plugin {
   };
 }
 
+// A service worker generated at build time (no PWA dependency): it precaches
+// every built file plus Pyodide so the app works offline after one visit, and
+// adds the isolation headers itself for hosts that can't set them (D9, D26).
+function serviceWorker(): Plugin {
+  return {
+    name: "pymentor:service-worker",
+    apply: "build",
+    enforce: "post",
+    generateBundle(_options, bundle) {
+      const publicFiles = readdirSync(join(here, "public")).filter((name) => !name.startsWith("_"));
+      const files = [...Object.keys(bundle), ...publicFiles].filter((name) => name !== "sw.js").sort();
+      const pyodideVersion = JSON.parse(readFileSync(join(pyodideDir, "package.json"), "utf8")).version;
+      const version = createHash("sha256")
+        .update(files.join("\n") + pyodideVersion)
+        .digest("hex")
+        .slice(0, 12);
+      const urls = ["./", ...files.filter((name) => name !== "index.html")];
+      const source = readFileSync(join(here, "src", "sw.template.js"), "utf8")
+        .replace("__VERSION__", JSON.stringify(version))
+        .replace("__PRECACHE__", JSON.stringify(urls));
+      this.emitFile({ type: "asset", fileName: "sw.js", source });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [preact(), pyodideAssets()],
+  plugins: [preact(), pyodideAssets(), serviceWorker()],
   server: { headers: ISOLATION_HEADERS, fs: { allow: [repoRoot] } },
   preview: { headers: ISOLATION_HEADERS },
   worker: { format: "es" },

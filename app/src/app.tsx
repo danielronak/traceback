@@ -103,13 +103,14 @@ export function App() {
   const outputFrame = useRef(0);
   function appendOutput(text: string) {
     outputBuffer.current += text;
-    if (outputFrame.current) return;
-    outputFrame.current = requestAnimationFrame(() => {
-      outputFrame.current = 0;
-      const chunk = outputBuffer.current;
-      outputBuffer.current = "";
-      setOutput((previous) => previous + chunk);
-    });
+    if (!outputFrame.current) outputFrame.current = requestAnimationFrame(flushOutput);
+  }
+  function flushOutput() {
+    cancelAnimationFrame(outputFrame.current);
+    outputFrame.current = 0;
+    const chunk = outputBuffer.current;
+    outputBuffer.current = "";
+    if (chunk) setOutput((previous) => previous + chunk);
   }
 
   async function run() {
@@ -126,11 +127,13 @@ export function App() {
         onInputUnavailable: () =>
           setNote("This browser session can't read input(); open PyMentor from its own address to enable it."),
       });
+      flushOutput(); // the program's last words before the closing note
       setRunFindings(report.findings);
       setSelected(0);
       const crash = report.findings.find((f) => f.diagnostic.severity === "runtime");
       setNote(report.stopped ? "Stopped." : crash ? "The program crashed. See the card." : "The program finished.");
     } catch (error) {
+      flushOutput();
       setNote(error instanceof EngineRestarted ? error.message : `Something went wrong: ${error}`);
     } finally {
       busy.current = false;

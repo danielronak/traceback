@@ -43,7 +43,8 @@ export function Console({ output, waiting, running, note, onAnswer, onStop }: Pr
           class="console-input"
           onSubmit={(event) => {
             event.preventDefault();
-            onAnswer(answer);
+            // Read the element itself: the last keystroke may not have re-rendered yet.
+            onAnswer(input.current?.value ?? answer);
             setAnswer("");
           }}
         >

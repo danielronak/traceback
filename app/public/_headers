@@ -1,0 +1,6 @@
+# Cloudflare Pages response headers. input() needs cross-origin isolation (D9);
+# the service worker also adds these, for hosts that can't set headers.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
