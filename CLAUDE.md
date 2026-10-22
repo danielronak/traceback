@@ -43,7 +43,7 @@ curriculum/  course content: course.toml, lessons/NN-id.md, exercises/NN-id.toml
 app/         web app: Vite + TS + Preact + CodeMirror, Pyodide in a worker
 pipeline/    training data, benchmark builder and evaluation harness (M5)
   corpus/              seed programs and their data card
-training/    model training (M6/M7, not started)
+training/    the tutor model: fine-tuning, evaluation, ONNX export (M6); runbook in its README
 benchmark/   frozen evaluation sets and results (v0)
 docs/        vision, architecture, plan
 ```
@@ -72,6 +72,15 @@ python -m pymentor_pipeline generate                 # data/generated/v1/ (not c
 python -m pymentor_pipeline evaluate --model template   # score a model on benchmark v0
 ```
 
+The tutor model (M6), in its own environment because PyTorch is heavy. Real
+runs happen on a GPU, following `training/README.md`; the tests use a tiny
+model built on the spot, so they run on a CPU with no downloads:
+
+```bash
+uv pip install torch && uv pip install -e engine -e pipeline -e "training[dev]"
+pytest training
+```
+
 The web app, from `app/` (Node 22):
 
 ```bash
@@ -84,7 +93,7 @@ npx playwright test            # end-to-end, builds first; set PLAYWRIGHT_CHROMI
 ```
 
 CI (`.github/workflows/ci.yml`) runs all of the above, with the engine and the
-pipeline on Python 3.13 and 3.14. Run the relevant ones locally before every commit.
+pipeline on Python 3.13 and 3.14, and training on 3.14 with CPU-only PyTorch. Run the relevant ones locally before every commit.
 
 ## App conventions
 

@@ -232,6 +232,27 @@ def hand_sheet(
     return len(chosen)
 
 
+def save_results(
+    todo: list[Item],
+    outputs: list[dict[str, Any]],
+    name: str,
+    version: str,
+    benchmarks: Path,
+    extra: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], int]:
+    """Score outputs and write ``results/<version>/<name>``: the report, the
+    outputs and the hand-scoring sheet. Returns the report and the sheet's rows."""
+    report = score(todo, outputs) | {"model": name, "benchmark": version} | (extra or {})
+    folder = benchmarks / "results" / version
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / f"{name}.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    with (folder / f"{name}-outputs.jsonl").open("w", encoding="utf-8") as file:
+        for output in outputs:
+            file.write(json.dumps({**output, "ms": round(output.get("ms") or 0, 3)}) + "\n")
+    rows = hand_sheet(todo, outputs, folder / f"{name}-hand-scoring.csv")
+    return report, rows
+
+
 def load_model(spec: str) -> Model:
     """``template``, or ``package.module:function`` for any other model."""
     if spec == "template":

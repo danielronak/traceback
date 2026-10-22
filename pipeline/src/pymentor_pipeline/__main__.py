@@ -89,14 +89,7 @@ def _evaluate(args: argparse.Namespace) -> None:
     else:
         outputs = evaluate.run_model(evaluate.load_model(args.model), todo)
         name = args.name or args.model.replace(":", "-").replace(".", "-")
-    report = evaluate.score(todo, outputs) | {"model": name, "benchmark": args.version}
-    folder = BENCHMARKS / "results" / args.version
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / f"{name}.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    with (folder / f"{name}-outputs.jsonl").open("w", encoding="utf-8") as file:
-        for output in outputs:
-            file.write(json.dumps({**output, "ms": round(output.get("ms") or 0, 3)}) + "\n")
-    rows = evaluate.hand_sheet(todo, outputs, folder / f"{name}-hand-scoring.csv")
+    report, rows = evaluate.save_results(todo, outputs, name, args.version, BENCHMARKS)
     overall = report["overall"]
     print(
         f"{name} on {args.version}: {report['items']} items, grounded {overall['grounded']:.1%}, "

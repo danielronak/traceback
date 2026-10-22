@@ -21,6 +21,7 @@ model server on this machine.
 from __future__ import annotations
 
 import json
+import random
 from collections import Counter
 from collections.abc import Callable, Iterable
 from pathlib import Path
@@ -107,7 +108,7 @@ def draft(
     system = system_prompt()
     tally: Counter[str] = Counter()
     todo = [e for e in read_jsonl(data / f"examples-{split}.jsonl") if _key(e) not in done]
-    for example in todo[:limit]:
+    for example in balanced(todo)[:limit]:
         item = _item(cases[example["case"]], example)
         text = teacher(system, example["prompt"])
         reasons = judge(text, item)
@@ -147,6 +148,25 @@ def accept_outputs(
                 row | {"prompt": example["prompt"], "target": prompt.target(text)},
             )
     return tally
+
+
+def balanced(examples: list[dict[str, Any]], seed: int = 0) -> list[dict[str, Any]]:
+    """Examples in an order where any prefix is a balanced sample: shuffled, then
+    one per card in turn, so a 500-example trial run covers every card it can
+    instead of the first few seed programs."""
+    by_card: dict[str, list[dict[str, Any]]] = {}
+    for example in examples:
+        by_card.setdefault(example["card"], []).append(example)
+    rng = random.Random(seed)
+    queues = [by_card[card] for card in sorted(by_card)]
+    for queue in queues:
+        rng.shuffle(queue)
+    ordered = []
+    while any(queues):
+        for queue in queues:
+            if queue:
+                ordered.append(queue.pop())
+    return ordered
 
 
 def _item(case: dict[str, Any], example: dict[str, Any]) -> Item:
