@@ -100,22 +100,33 @@ The shared library everything else builds on.
 - A test confirms the package imports only the standard library.
 - The full test suite runs in under 10 seconds.
 
-## M2: Exercises and logic errors
+## M2: Exercises and logic errors ✅
 
-- [ ] Exercise format (TOML): id, title, prompt (Markdown), starter code,
-      reference solution, tests (function calls, or stdin to expected stdout)
-      and hints
-- [ ] Test runner that turns failures into LOGIC diagnostics ("expected 15, got
-      10"), with the test details in `data`
-- [ ] Logic cards: `test-failed` (generic), `printed-not-returned`
-      (the function returns `None` but printed the expected value),
-      `wrong-output`
-- [ ] 15–20 seed exercises for the first lessons. The validator checks that
-      every reference solution passes and every starter fails or is
-      incomplete.
+- [x] Exercise format (TOML, one exercise per file in `curriculum/exercises/`):
+      id, title, prompt (Markdown), starter code, reference solution, hints,
+      and tests of two kinds: `call` (an expression and its expected value)
+      and `output` (inputs and the expected printed output) (D21)
+- [x] Test runner (`exercises.py`) that turns failures into LOGIC
+      diagnostics at the tested function's `def` line, with the test details
+      in `data`. Only the first failure becomes a finding; all results are
+      reported (D22).
+- [x] Fixes inside exercises are verified by re-running the exercise's tests
+      (D23)
+- [x] 12 new cards in `logic.toml` (63 in total): `printed-not-returned`
+      (with a `print` → `return` fix), `missing-return`,
+      `returned-text-not-number`, `off-by-one`, `test-failed`,
+      `function-never-called`, `nothing-printed`, `input-joined-as-text`
+      (with an `int(input())` fix), `wrong-output`, and, for crashes in the
+      test call itself, `expected-function-misnamed`,
+      `expected-function-missing` and `test-call-signature`
+- [x] 18 seed exercises. Some starters are blank templates and some are
+      "fix the bug" programs aimed at a specific card. The validator checks
+      that every solution passes with no findings at all, and that every
+      starter compiles, fails, and is taught by a card.
+- [x] CLI: `python -m pymentor exercise EXERCISE.toml [FILE] [--json]`
 
 **Done when:** the exercise validator runs in CI and `printed-not-returned`
-triggers on its example.
+triggers on its example. ✔
 
 ## M3: Web app MVP (the Phase 1 core loop)
 

@@ -19,9 +19,9 @@ current milestone.
 
 | Part | Directory | Status |
 | --- | --- | --- |
-| Correction engine and 51 rule cards | [`engine/`](engine/) | Working (M1 done) |
-| Exercises and logic errors | `engine/` | Next (M2) |
-| Web app | `app/` | Planned (M3) |
+| Correction engine and 63 rule cards | [`engine/`](engine/) | Working (M1 done) |
+| Exercises and logic errors | [`curriculum/`](curriculum/) | 18 exercises (M2 done) |
+| Web app | `app/` | Next (M3) |
 | Tutor model training | `training/` | Planned (M6, M7) |
 | VS Code extension | `extension/` | Planned (M9) |
 
@@ -33,6 +33,7 @@ Requires Python 3.13.
 uv venv .venv && source .venv/bin/activate
 uv pip install -e "engine[dev]"
 python -m pymentor check my_program.py --run
+python -m pymentor exercise curriculum/exercises/03-add-two-numbers.toml
 ```
 
 ## Documentation
