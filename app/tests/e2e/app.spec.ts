@@ -2,9 +2,15 @@ import { expect, type Page, test } from "@playwright/test";
 
 const READY = /3\.14 ready/;
 
-async function open(page: Page) {
+async function start(page: Page) {
   await page.goto("/");
   await expect(page.locator(".status")).toHaveText(READY, { timeout: 60_000 });
+}
+
+/** Most tests use the playground, which starts with the design doc's mockup. */
+async function open(page: Page) {
+  await start(page);
+  await page.getByRole("button", { name: "Playground" }).click();
 }
 
 async function setCode(page: Page, code: string) {
@@ -83,11 +89,39 @@ test("Stop ends a program waiting for input, and a busy one", async ({ page }) =
   await expect(page.locator(".console-note")).toHaveText("Stopped.", { timeout: 5_000 });
 });
 
+test("the course: overview, a lesson with runnable snippets, then its exercise", async ({ page }) => {
+  await start(page);
+  await expect(page.locator(".overview-progress")).toContainText("0 of 27 done");
+  await page.getByRole("button", { name: "Start: Showing things on screen" }).click();
+  await expect(page.locator("#lesson-title")).toHaveText("Showing things on screen");
+
+  const first = page.locator(".snippet").first();
+  await first.getByRole("button", { name: "Run" }).click();
+  await expect(first.locator(".console-log")).toHaveText("Hello, world!\nI am learning Python.\nThe program finished.");
+
+  // A deliberate mistake gets the card the lesson says it will.
+  const broken = page.locator(".snippet.broken").first();
+  await broken.getByRole("button", { name: "Run" }).click();
+  await expect(broken.locator(".card-title").first()).toHaveText('Did you mean the text "hello"?');
+
+  await page.getByRole("button", { name: "Next: Hello, world!" }).click();
+  await setCode(page, 'print("Hello, world!")\n');
+  await page.getByRole("button", { name: "Run tests" }).click();
+  await expect(page.getByText("All tests pass. Well done!")).toBeVisible();
+  await expect(page.locator(".course-item .mark.done")).toHaveCount(2);
+
+  // Progress is kept on this device.
+  await page.reload();
+  await expect(page.locator(".status")).toHaveText(READY, { timeout: 60_000 });
+  await expect(page.locator(".course-item .mark.done")).toHaveCount(2);
+  await page.getByRole("button", { name: "Overview" }).click();
+  await expect(page.locator(".overview-progress")).toContainText("2 of 27 done");
+  await expect(page.getByRole("button", { name: "Continue: Remembering things: variables and input" })).toBeVisible();
+});
+
 test("an exercise: fail, get taught, fix, pass, and keep the draft", async ({ page }) => {
-  await open(page);
-  await page.getByRole("button", { name: "Exercises" }).click();
-  await expect(page.locator(".exercise-list button")).toHaveCount(18);
-  await page.getByRole("button", { name: "Fix the adding machine" }).click();
+  await start(page);
+  await page.getByRole("navigation", { name: "Course" }).getByRole("button", { name: /Fix the adding machine/ }).click();
   await page.getByRole("button", { name: "Run tests" }).click();
   await expect(page.locator(".test-fail")).toHaveCount(2);
   await expect(page.locator(".test").first()).toContainText('(got "34")');
@@ -123,11 +157,11 @@ test("works offline after one visit", async ({ page, context }) => {
   await expect(page.locator(".console-log")).toHaveText("? ab\nabab\nThe program finished.");
 });
 
-for (const mode of ["Playground", "Exercises"]) {
+for (const mode of ["Playground", "Course"]) {
   test(`fits a phone screen without sideways scrolling (${mode})`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
-    await open(page);
-    await page.getByRole("button", { name: mode }).click();
+    await start(page);
+    await page.getByRole("button", { name: mode, exact: true }).click();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
   });

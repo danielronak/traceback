@@ -2,11 +2,18 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { CardList } from "./cards/CardList";
 import type { CardState } from "./cards/ladder";
 import { Console } from "./console/Console";
+import { CourseNav } from "./course/CourseNav";
+import { CURRICULUM_FILES } from "./course/curriculum";
+import { LessonView, type SnippetRunner } from "./course/LessonView";
+import { type ItemRef, nextItem } from "./course/order";
+import { Overview } from "./course/Overview";
 import { Editor } from "./editor/Editor";
-import { EngineClient, EngineRestarted, type ReadyInfo } from "./engine/client";
-import type { Exercise, Finding, TestResult } from "./engine/types";
-import { EXERCISE_FILES } from "./exercises/curriculum";
+import { findingKey } from "./editor/positions";
+import { EngineClient, EngineRestarted, type ReadyInfo, type RunHandlers } from "./engine/client";
+import type { CourseItem, Finding, Report, TestResult } from "./engine/types";
 import { ExercisePanel } from "./exercises/ExercisePanel";
+import { exerciseAttempted, KeyValueStore, lessonRead, mistakesSeen, newMistakes } from "./progress/store";
+import { useProgress } from "./progress/useProgress";
 import { load, save } from "./storage";
 
 // The design doc's mockup: a syntax error on line 2 and a style hint on line 4.
@@ -17,13 +24,21 @@ Total = sum(scores)
 `;
 const CHECK_DELAY_MS = 600; // "gentle live checking": only once typing pauses
 
-type Mode = { kind: "playground" } | { kind: "exercise"; id: string };
+type Mode = { kind: "playground" } | { kind: "course"; item: ItemRef | null };
+
+function savedMode(): Mode {
+  const saved = load<Mode | { kind: "exercise"; id: string }>("mode");
+  if (saved?.kind === "exercise") return { kind: "course", item: { kind: "exercise", id: saved.id } }; // from M3
+  return saved ?? { kind: "course", item: null };
+}
 
 export function App() {
-  const engine = useMemo(() => new EngineClient(EXERCISE_FILES), []);
+  const engine = useMemo(() => new EngineClient(CURRICULUM_FILES), []);
+  const store = useMemo(() => new KeyValueStore(), []);
+  const [progress, updateProgress] = useProgress(store);
   const [ready, setReady] = useState<ReadyInfo | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
-  const [mode, setMode] = useState<Mode>(() => load<Mode>("mode") ?? { kind: "playground" });
+  const [mode, setMode] = useState<Mode>(savedMode);
   const modeRef = useRef(mode); // read by callbacks that outlive a render
 
   const [doc, setDoc] = useState(() => load<string>(draftKey(mode)) ?? WELCOME);
@@ -45,17 +60,18 @@ export function App() {
   const checkTimer = useRef<number>();
   const checkSeq = useRef(0);
   const dirty = useRef(true);
-  const busy = useRef(false); // a run or test run owns the worker
+  const busy = useRef(false); // a run, test run or snippet run owns the worker
   const engineReady = useRef(false);
+  const seenMistakes = useRef(new Set<string>()); // mistakes in the last run of this code
 
   useEffect(() => {
     engine.ready.then(
       (info) => {
         engineReady.current = true;
         setReady(info);
-        const current = modeRef.current;
-        if (current.kind === "exercise" && load<string>(draftKey(current)) === null) {
-          const starter = info.exercises.find((e) => e.id === current.id)?.starter;
+        const item = currentExercise(modeRef.current);
+        if (item && load<string>(draftKey(modeRef.current)) === null) {
+          const starter = info.exercises.find((e) => e.id === item.id)?.starter;
           if (starter !== undefined) replaceDoc(starter);
         }
       },
@@ -63,9 +79,18 @@ export function App() {
     );
   }, [engine]);
 
-  const exercises = ready?.exercises ?? [];
-  const exercise = mode.kind === "exercise" ? exercises.find((e) => e.id === mode.id) : undefined;
+  const course = ready?.course;
+  const item = mode.kind === "course" ? mode.item : null;
+  const exercise = item?.kind === "exercise" ? ready?.exercises.find((e) => e.id === item.id) : undefined;
+  const lesson = item?.kind === "lesson" ? course?.lessons[item.id] : undefined;
   const findings = runFindings ?? staticFindings;
+  const hasEditor = mode.kind === "playground" || !!exercise;
+
+  useEffect(() => {
+    if (lesson) updateProgress((p) => lessonRead(p, lesson.id));
+  }, [lesson?.id]);
+
+  // --- live checking -----------------------------------------------------------
 
   async function check() {
     if (!engineReady.current || busy.current || !dirty.current) return;
@@ -98,6 +123,22 @@ export function App() {
     onChange(text);
   }
 
+  /**
+   * Count mistakes from deliberate runs only (Run, Run tests), not from live
+   * checks: a half-typed line isn't a mistake yet. A mistake still on screen
+   * from the last run doesn't count again.
+   */
+  function recordMistakes(report: { findings: Finding[] }) {
+    const current = report.findings
+      .filter((f) => f.card)
+      .map((f) => ({ card: f.card!.id, key: findingKey(f.diagnostic) }));
+    const fresh = newMistakes(seenMistakes.current, current);
+    seenMistakes.current = new Set(current.map((m) => m.key));
+    updateProgress((p) => mistakesSeen(p, fresh));
+  }
+
+  // --- running -------------------------------------------------------------------
+
   // Render streamed output at most once per frame.
   const outputBuffer = useRef("");
   const outputFrame = useRef(0);
@@ -113,70 +154,100 @@ export function App() {
     if (chunk) setOutput((previous) => previous + chunk);
   }
 
-  async function run() {
-    if (!engineReady.current || busy.current) return;
+  /** Every use of the worker goes through here, so only one runs at a time. */
+  async function exclusive<T>(work: () => Promise<T>): Promise<T> {
+    if (!engineReady.current || busy.current) throw new Error("Python is busy.");
     window.clearTimeout(checkTimer.current);
     busy.current = true;
     setRunning(true);
+    try {
+      return await work();
+    } finally {
+      busy.current = false;
+      setRunning(false);
+      setWaiting(false);
+      check(); // anything typed meanwhile
+    }
+  }
+
+  async function run() {
     setOutput("");
     setNote(null);
     try {
-      const report = await engine.run(source.current, {
-        onOutput: appendOutput,
-        onInputRequest: () => setWaiting(true),
-        onInputUnavailable: () =>
-          setNote("This browser session can't read input(); open PyMentor from its own address to enable it."),
-      });
+      const report = await exclusive(() =>
+        engine.run(source.current, {
+          onOutput: appendOutput,
+          onInputRequest: () => setWaiting(true),
+          onInputUnavailable: () =>
+            setNote("This browser session can't read input(); open PyMentor from its own address to enable it."),
+        }),
+      );
       flushOutput(); // the program's last words before the closing note
       setRunFindings(report.findings);
       setSelected(0);
+      recordMistakes(report);
       const crash = report.findings.find((f) => f.diagnostic.severity === "runtime");
       setNote(report.stopped ? "Stopped." : crash ? "The program crashed. See the card." : "The program finished.");
     } catch (error) {
       flushOutput();
       setNote(error instanceof EngineRestarted ? error.message : `Something went wrong: ${error}`);
-    } finally {
-      busy.current = false;
-      setRunning(false);
-      setWaiting(false);
-      check(); // anything typed during the run
     }
   }
 
   async function runTests() {
-    if (!engineReady.current || busy.current || !exercise) return;
-    window.clearTimeout(checkTimer.current);
-    busy.current = true;
-    setRunning(true);
+    if (!exercise) return;
     setNote(null);
     try {
-      const report = await engine.runExercise(exercise.id, source.current);
+      const report = await exclusive(() => engine.runExercise(exercise.id, source.current));
       setResults(report.results);
       setPassed(report.passed);
       setRunFindings(report.findings);
       setSelected(0);
+      recordMistakes(report);
+      updateProgress((p) => exerciseAttempted(p, exercise.id, report.passed));
     } catch (error) {
       setNote(error instanceof EngineRestarted ? error.message : `Something went wrong: ${error}`);
-    } finally {
-      busy.current = false;
-      setRunning(false);
-      check();
     }
   }
+
+  const snippetRunner: SnippetRunner = {
+    ready: !!ready && !running,
+    run: (code: string, handlers: RunHandlers): Promise<Report> => exclusive(() => engine.run(code, handlers)),
+    answer: (text) => engine.answer(text),
+    stop: () => engine.stop(),
+  };
+
+  // --- navigation ------------------------------------------------------------------
 
   function switchMode(next: Mode) {
     save("mode", next);
     modeRef.current = next;
     setMode(next);
-    const starter = next.kind === "exercise" ? exercises.find((e) => e.id === next.id)?.starter : WELCOME;
-    replaceDoc(load<string>(draftKey(next)) ?? starter ?? "");
+    seenMistakes.current = new Set();
     setOutput("");
     setNote(null);
+    const starter =
+      next.kind === "playground"
+        ? WELCOME
+        : next.item?.kind === "exercise"
+          ? ready?.exercises.find((e) => e.id === next.item!.id)?.starter
+          : undefined;
+    if (starter !== undefined) replaceDoc(load<string>(draftKey(next)) ?? starter);
+    window.scrollTo({ top: 0 });
   }
 
-  function resetExercise(e: Exercise) {
-    replaceDoc(e.starter);
+  const open = (target: ItemRef | null) => switchMode({ kind: "course", item: target });
+  const nextLink = (from: ItemRef): { title: string; open(): void } | null => {
+    const next: CourseItem | undefined = course && nextItem(course, from);
+    return next ? { title: next.title, open: () => open(next) } : null;
+  };
+
+  function tryInPlayground(code: string) {
+    switchMode({ kind: "playground" });
+    replaceDoc(code);
   }
+
+  const layout = !course || mode.kind === "playground" ? "" : hasEditor ? "with-nav" : "with-nav reading";
 
   return (
     <div class="app">
@@ -185,18 +256,18 @@ export function App() {
         <nav class="modes" aria-label="Mode">
           <button
             type="button"
+            aria-pressed={mode.kind === "course"}
+            disabled={!ready}
+            onClick={() => switchMode({ kind: "course", item: mode.kind === "course" ? mode.item : null })}
+          >
+            Course
+          </button>
+          <button
+            type="button"
             aria-pressed={mode.kind === "playground"}
             onClick={() => switchMode({ kind: "playground" })}
           >
             Playground
-          </button>
-          <button
-            type="button"
-            aria-pressed={mode.kind === "exercise"}
-            disabled={!ready}
-            onClick={() => switchMode({ kind: "exercise", id: exercise?.id ?? exercises[0].id })}
-          >
-            Exercises
           </button>
         </nav>
         <span class={`status ${ready ? "ok" : failure ? "bad" : ""}`} role="status">
@@ -215,76 +286,87 @@ export function App() {
 
       {failure && <p class="banner bad">{failure}</p>}
 
-      <main class={`layout ${exercise ? "with-exercises" : ""}`}>
-        {exercise && (
-          <nav class="exercise-list" aria-label="Exercises">
-            <ol>
-              {exercises.map((e) => (
-                <li key={e.id}>
-                  <button
-                    type="button"
-                    aria-current={e.id === exercise.id}
-                    onClick={() => switchMode({ kind: "exercise", id: e.id })}
-                  >
-                    {e.title}
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </nav>
+      <main class={`layout ${layout}`}>
+        {course && mode.kind === "course" && (
+          <CourseNav course={course} progress={progress} current={item} onOpen={open} />
         )}
 
-        <section class="workspace">
-          <div class="toolbar">
-            <button type="button" class="primary" disabled={!ready || running} onClick={run}>
-              Run
-            </button>
-            {exercise && (
-              <>
-                <button type="button" class="primary" disabled={!ready || running} onClick={runTests}>
-                  Run tests
-                </button>
-                <button type="button" disabled={running} onClick={() => resetExercise(exercise)}>
-                  Start over
-                </button>
-              </>
-            )}
-            <Legend />
-          </div>
-          <Editor
-            doc={doc}
-            version={docVersion}
-            findings={findings}
-            onChange={onChange}
-            onLineLeave={check}
-            onSelectFinding={setSelected}
-            label="Python code editor"
-          />
-          <Console
-            output={output}
-            waiting={waiting}
-            running={running}
-            note={note}
-            onAnswer={(text) => {
-              setWaiting(false);
-              engine.answer(text);
-            }}
-            onStop={() => engine.stop()}
-          />
-        </section>
+        {course && mode.kind === "course" && !item && (
+          <Overview course={course} progress={progress} onOpen={open} />
+        )}
 
-        <aside class="side">
-          {exercise && <ExercisePanel exercise={exercise} results={results} passed={passed} />}
-          <CardList
-            findings={findings}
-            selected={selected}
-            states={cardStates}
-            onSelect={setSelected}
-            onState={(key, state) => setCardStates((all) => ({ ...all, [key]: state }))}
-            onAcceptFix={(finding) => finding.fix && replaceDoc(finding.fix.source)}
-            emptyMessage={ready ? "No problems found so far." : "Loading Python…"}
+        {lesson && item && (
+          <LessonView
+            lesson={lesson}
+            runner={snippetRunner}
+            next={nextLink(item)}
+            onTryInPlayground={tryInPlayground}
           />
-        </aside>
+        )}
+
+        {!course && mode.kind === "course" && (
+          <p class="loading" role="status">
+            Loading Python and the course…
+          </p>
+        )}
+
+        {hasEditor && (
+          <>
+            <section class="workspace">
+              <div class="toolbar">
+                <button type="button" class="primary" disabled={!ready || running} onClick={run}>
+                  Run
+                </button>
+                {exercise && (
+                  <>
+                    <button type="button" class="primary" disabled={!ready || running} onClick={runTests}>
+                      Run tests
+                    </button>
+                    <button type="button" disabled={running} onClick={() => replaceDoc(exercise.starter)}>
+                      Start over
+                    </button>
+                  </>
+                )}
+                <Legend />
+              </div>
+              <Editor
+                doc={doc}
+                version={docVersion}
+                findings={findings}
+                onChange={onChange}
+                onLineLeave={check}
+                onSelectFinding={setSelected}
+                label="Python code editor"
+              />
+              <Console
+                output={output}
+                waiting={waiting}
+                running={running}
+                note={note}
+                onAnswer={(text) => {
+                  setWaiting(false);
+                  engine.answer(text);
+                }}
+                onStop={() => engine.stop()}
+              />
+            </section>
+
+            <aside class="side">
+              {exercise && item && (
+                <ExercisePanel exercise={exercise} results={results} passed={passed} next={nextLink(item)} />
+              )}
+              <CardList
+                findings={findings}
+                selected={selected}
+                states={cardStates}
+                onSelect={setSelected}
+                onState={(key, state) => setCardStates((all) => ({ ...all, [key]: state }))}
+                onAcceptFix={(finding) => finding.fix && replaceDoc(finding.fix.source)}
+                emptyMessage={ready ? "No problems found so far." : "Loading Python…"}
+              />
+            </aside>
+          </>
+        )}
       </main>
     </div>
   );
@@ -301,6 +383,11 @@ function Legend() {
   );
 }
 
+function currentExercise(mode: Mode): ItemRef | null {
+  return mode.kind === "course" && mode.item?.kind === "exercise" ? mode.item : null;
+}
+
 function draftKey(mode: Mode): string {
-  return mode.kind === "exercise" ? `draft:${mode.id}` : "draft:playground";
+  const item = currentExercise(mode);
+  return item ? `draft:${item.id}` : "draft:playground";
 }

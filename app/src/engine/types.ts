@@ -76,3 +76,36 @@ export interface ExerciseReport {
   findings: Finding[];
   results: TestResult[];
 }
+
+export interface LessonPart {
+  kind: "markdown" | "code";
+  text?: string; // markdown
+  code?: string; // code
+  inputs?: string[];
+  broken?: string | null; // the card a deliberate mistake should trigger
+}
+
+export interface Lesson {
+  id: string;
+  title: string;
+  teaches: string[];
+  parts: LessonPart[];
+}
+
+export interface CourseItem {
+  kind: "lesson" | "exercise";
+  id: string;
+  title: string;
+}
+
+export interface Unit {
+  id: string;
+  title: string;
+  items: CourseItem[];
+}
+
+export interface Course {
+  title: string;
+  units: Unit[];
+  lessons: Record<string, Lesson>;
+}

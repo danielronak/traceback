@@ -8,10 +8,11 @@ import {
   type Request,
   type WorkerMessage,
 } from "./protocol";
-import type { Exercise, ExerciseReport, Report } from "./types";
+import type { Course, Exercise, ExerciseReport, Report } from "./types";
 
 export interface ReadyInfo {
   pythonVersion: string;
+  course: Course;
   exercises: Exercise[];
   inputAvailable: boolean;
 }
@@ -42,13 +43,13 @@ export class EngineClient {
   private watchdog?: { timer: number; remaining: number; startedAt: number };
   private waitingForInput = false;
 
-  constructor(private exerciseFiles: [string, string][]) {
+  constructor(private curriculumFiles: [string, string][]) {
     this.start();
   }
 
   private start() {
     this.worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
-    const init: InitMessage = { type: "init", exercises: this.exerciseFiles };
+    const init: InitMessage = { type: "init", curriculum: this.curriculumFiles };
     if (self.crossOriginIsolated) {
       init.control = new SharedArrayBuffer(8);
       init.data = new SharedArrayBuffer(INPUT_BYTES);
@@ -61,13 +62,16 @@ export class EngineClient {
       this.worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
         const message = event.data;
         switch (message.type) {
-          case "ready":
+          case "ready": {
+            const { course, exercises } = JSON.parse(message.curriculum);
             resolve({
               pythonVersion: message.pythonVersion,
-              exercises: JSON.parse(message.exercises),
+              course,
+              exercises,
               inputAvailable: message.crossOriginIsolated,
             });
             break;
+          }
           case "failed":
             reject(new Error(message.message));
             break;

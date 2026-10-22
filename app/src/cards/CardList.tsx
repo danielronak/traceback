@@ -12,6 +12,7 @@ interface Props {
   onSelect(index: number): void;
   onState(key: string, state: CardState): void;
   onAcceptFix(finding: Finding): void;
+  acceptLabel?: string;
   emptyMessage: string;
 }
 
@@ -37,6 +38,7 @@ export function CardList(props: Props) {
                 )
               }
               onAcceptFix={() => props.onAcceptFix(finding)}
+              acceptLabel={props.acceptLabel ?? "Accept fix"}
             />
           </li>
         );
@@ -52,9 +54,10 @@ interface CardProps {
   onOpen(): void;
   onAction(action: CardAction): void;
   onAcceptFix(): void;
+  acceptLabel: string;
 }
 
-function CardView({ finding, open, state, onOpen, onAction, onAcceptFix }: CardProps) {
+function CardView({ finding, open, state, onOpen, onAction, onAcceptFix, acceptLabel }: CardProps) {
   const { diagnostic: d, card, fix } = finding;
   const title = card?.title ?? `${d.code}: ${d.message}`;
   const hintCount = card?.hints.length ?? 0;
@@ -111,7 +114,7 @@ function CardView({ finding, open, state, onOpen, onAction, onAcceptFix }: CardP
           <div class="card-actions">
             {state.fix && fix ? (
               <button type="button" class="primary" onClick={onAcceptFix}>
-                Accept fix
+                {acceptLabel}
               </button>
             ) : (
               nextHint && (
