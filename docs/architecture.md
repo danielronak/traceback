@@ -497,3 +497,19 @@ with loss scaling on pre-Ampere GPUs), Adafactor and gradient checkpointing
 for 4 to 6 GB cards. Tests train, resume and export a tiny Llama built on the
 spot, on the CPU, so CI needs no downloads. *Accepted. Re-check when
 optimum-onnx supports transformers 5.*
+
+**D44. Full fine-tuning on a 4 GB GPU: step in backward, score answers only.**
+The owner's RTX 3050 has 4 GB. Fp32 weights, gradients and Adafactor state
+alone would need about 3.0 GB for SmolLM2-360M and 4.2 GB for
+Qwen2.5-Coder-0.5B. Two changes keep it a full fine-tune that fits. First,
+`--step-in-backward` (PyTorch's "optimizer step in backward" pattern) gives
+each weight tensor its own optimizer, stepped by a hook as soon as its
+gradient is ready, which then frees it. Only the largest tensor's gradient is
+ever held, but gradient accumulation is impossible and clipping is per tensor;
+a test shows it otherwise matches the standard loop exactly. Second,
+`answer_loss` scores the vocabulary only at answer positions for
+architectures whose head is a plain projection (Llama, Qwen2, Qwen3), with a
+test showing it equals the model's own loss. Estimates: about 2.5 GB and
+3.4 GB. These are calculated, not measured; the first real run confirms them.
+LoRA was the alternative, but it changes what is being compared and adds a
+dependency. *Accepted.*
