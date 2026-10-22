@@ -35,7 +35,8 @@ Every design decision traces back to these.
 5. **Data, not hardcoded logic.** Teaching knowledge lives in rule cards stored
    as data. Adding a lesson about an error means adding an entry.
 6. **Lightweight enough for cheap hardware.** The full experience runs on
-   budget laptops and school Chromebooks.
+   budget laptops and school Chromebooks, and the smallest tutor model should
+   run on a mid-range phone too (D45).
 
 ## The core experience
 

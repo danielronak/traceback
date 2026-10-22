@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, get_cosine_schedule_with_warmup
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from .data import add_special_tokens, collate, encode, load_drafts
 from .infer import pick_device
@@ -53,6 +53,12 @@ class Config:
     # on older cards), or bf16 weights to save memory (updates can round away).
     dtype: str = "fp32"
     gradient_checkpointing: bool = False
+    # Update each weight as soon as its gradient exists, then free the gradient,
+    # so a full set of gradients never sits in memory: about 4 bytes a parameter
+    # saved, what makes a 4 GB GPU work. No gradient accumulation (grad_accum
+    # must be 1), and clipping is per weight tensor instead of global.
+    step_in_backward: bool = False
+    max_grad_norm: float = 1.0  # 0 turns clipping off
     eval_every: int = 200
     save_every: int = 500
     seed: int = 0
@@ -88,19 +94,18 @@ def train(config: Config, *, resume: bool = False, log: Callable[[str], object] 
         f"({dropped} too long for {config.max_length} tokens); {steps} optimizer steps on {device}"
     )
 
-    optimizer = _optimizer(model, config)
-    scheduler = get_cosine_schedule_with_warmup(optimizer, int(config.warmup * steps), steps)
+    autocast, scaler = _autocast(device, config)
+    stepper = (InBackward if config.step_in_backward else Standard)(model, config, steps, scaler)
     state = {"step": 0, "micro": 0, "best_val": None}
     if source != config.base:
         saved = torch.load(out / "last" / "trainer.pt", weights_only=False)
-        optimizer.load_state_dict(saved["optimizer"])
-        scheduler.load_state_dict(saved["scheduler"])
+        stepper.load_state_dict(saved["optimizer"])
         state = saved["state"]
+        stepper.step_count = state["step"]
         log(f"resumed at step {state['step']}")
     else:
         (out / "config.json").write_text(json.dumps(asdict(config), indent=2) + "\n")
 
-    autocast, scaler = _autocast(device, config)
     pad_id = tokenizer.pad_token_id
     model.train()
     started, tokens = time.monotonic(), 0
@@ -113,25 +118,21 @@ def train(config: Config, *, resume: bool = False, log: Callable[[str], object] 
             k: v.to(device) for k, v in collate([train_set[i] for i in chosen], pad_id).items()
         }
         with autocast:
-            loss = model(**batch).loss / config.grad_accum
-        scaler.scale(loss).backward()
+            loss = answer_loss(model, batch) / config.grad_accum
+        stepper.backward(loss)
         tokens += int(batch["attention_mask"].sum())
         state["micro"] += 1
         if state["micro"] % config.grad_accum:
             continue
 
-        scaler.unscale_(optimizer)
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        scaler.step(optimizer)
-        scaler.update()
-        scheduler.step()
-        optimizer.zero_grad(set_to_none=True)
+        lr = stepper.lr()
+        stepper.step()
         state["step"] += 1
         step = state["step"]
         entry = {
             "step": step,
             "loss": round(loss.item() * config.grad_accum, 4),
-            "lr": scheduler.get_last_lr()[0],
+            "lr": lr,
             "tokens_per_s": round(tokens / max(time.monotonic() - started, 1e-9)),
         }
         if step % config.eval_every == 0 or step == steps:
@@ -146,7 +147,7 @@ def train(config: Config, *, resume: bool = False, log: Callable[[str], object] 
         if step % 20 == 0 or "val_loss" in entry:
             log(json.dumps(entry))
         if step % config.save_every == 0 or step == steps:
-            _checkpoint(model, tokenizer, optimizer, scheduler, state, out / "last")
+            _checkpoint(model, tokenizer, stepper, state, out / "last")
 
     if not (out / "best").exists():  # no validation set: the last weights are the result
         _save(model, tokenizer, out / "best")
@@ -175,9 +176,32 @@ def evaluate_loss(model, examples, pad_id, config, device, autocast) -> float | 
         batch = {k: v.to(device) for k, v in batch.items()}
         targets = int((batch["labels"][:, 1:] != -100).sum())
         with autocast:
-            total += model(**batch).loss.item() * targets
+            total += answer_loss(model, batch).item() * targets
         count += targets
     return round(total / max(count, 1), 4)
+
+
+# Architectures whose output head is a plain projection of the last hidden
+# state (checked in transformers' source), so scores can be computed for just
+# some positions. Others, such as Granite (which scales its logits), use the
+# model's own loss.
+ANSWER_ONLY_HEADS = frozenset({"llama", "qwen2", "qwen3"})
+
+
+def answer_loss(model: Any, batch: dict[str, torch.Tensor]) -> torch.Tensor:
+    """Mean cross-entropy over the answer's tokens, the same value as
+    ``model(**batch).loss``. Where it can, it scores the vocabulary only at
+    answer positions: prompts are most of each example, and scoring a 152k
+    vocabulary at every position costs about half a gigabyte a sequence."""
+    if model.config.model_type not in ANSWER_ONLY_HEADS:
+        return model(**batch).loss
+    hidden = model.model(
+        input_ids=batch["input_ids"], attention_mask=batch["attention_mask"], use_cache=False
+    ).last_hidden_state
+    labels = batch["labels"][:, 1:]  # position i predicts token i + 1
+    keep = labels != -100
+    logits = model.lm_head(hidden[:, :-1][keep]).float()
+    return torch.nn.functional.cross_entropy(logits, labels[keep])
 
 
 def memory_estimate(model: Any, config: Config) -> str:
@@ -185,7 +209,10 @@ def memory_estimate(model: Any, config: Config) -> str:
     n = sum(p.numel() for p in model.parameters())
     weight = 2 if config.dtype == "bf16" else 4
     optimizer = 0.1 * weight if config.optimizer == "adafactor" else 2 * weight
-    gb = n * (weight * 2 + optimizer) / 1e9
+    # With step_in_backward, only one tensor's gradient exists at a time.
+    largest = max(p.numel() for p in model.parameters())
+    gradients = largest * weight if config.step_in_backward else n * weight
+    gb = (n * (weight + optimizer) + gradients) / 1e9
     return (
         f"{n / 1e6:.0f}M parameters: about {gb:.1f} GB for weights, gradients and "
         f"{config.optimizer} state, plus activations"
@@ -209,8 +236,91 @@ def _load_dtype(config: Config) -> dict[str, Any]:
     return {"dtype": dtype} if major >= 5 else {"torch_dtype": dtype}
 
 
-def _optimizer(model, config: Config) -> torch.optim.Optimizer:
-    params = [p for p in model.parameters() if p.requires_grad]
+def lr_factor(step: int, warmup: int, total: int) -> float:
+    """Linear warmup, then a cosine decay to zero: the learning rate's multiplier."""
+    if step < warmup:
+        return step / max(1, warmup)
+    progress = (step - warmup) / max(1, total - warmup)
+    return max(0.0, 0.5 * (1.0 + math.cos(math.pi * min(progress, 1.0))))
+
+
+class Standard:
+    """Accumulate gradients over ``grad_accum`` micro-batches, clip them all
+    together, then step once."""
+
+    def __init__(self, model, config: Config, total: int, scaler) -> None:
+        self.model, self.config, self.scaler = model, config, scaler
+        self.params = [p for p in model.parameters() if p.requires_grad]
+        self.optimizer = _optimizer(self.params, config)
+        self.warmup, self.total = int(config.warmup * total), total
+        self.step_count = 0
+
+    def lr(self) -> float:
+        return self.config.lr * lr_factor(self.step_count, self.warmup, self.total)
+
+    def backward(self, loss: torch.Tensor) -> None:
+        self.scaler.scale(loss).backward()
+
+    def step(self) -> None:
+        for group in self.optimizer.param_groups:
+            group["lr"] = self.lr()
+        self.scaler.unscale_(self.optimizer)
+        if self.config.max_grad_norm:
+            torch.nn.utils.clip_grad_norm_(self.params, self.config.max_grad_norm)
+        self.scaler.step(self.optimizer)
+        self.scaler.update()
+        self.optimizer.zero_grad(set_to_none=True)
+        self.step_count += 1
+
+    def state_dict(self) -> dict:
+        return self.optimizer.state_dict()
+
+    def load_state_dict(self, state: dict) -> None:
+        self.optimizer.load_state_dict(state)
+
+
+class InBackward(Standard):
+    """One small optimizer per weight tensor, stepped by a hook the moment that
+    tensor's gradient is ready, which then frees it (PyTorch's "optimizer step
+    in backward" pattern)."""
+
+    def __init__(self, model, config: Config, total: int, scaler) -> None:
+        if config.grad_accum != 1:
+            raise ValueError("step_in_backward updates every batch: set grad_accum to 1")
+        if scaler.is_enabled():
+            raise ValueError("step_in_backward needs bf16 or fp32, not fp16 loss scaling")
+        self.model, self.config, self.scaler = model, config, scaler
+        self.params = [p for p in model.parameters() if p.requires_grad]
+        self.optimizers = {p: _optimizer([p], config) for p in self.params}
+        self.warmup, self.total = int(config.warmup * total), total
+        self.step_count = 0
+        for p in self.params:
+            p.register_post_accumulate_grad_hook(self._update)
+
+    def _update(self, p: torch.Tensor) -> None:
+        if self.config.max_grad_norm:
+            torch.nn.utils.clip_grad_norm_([p], self.config.max_grad_norm)
+        optimizer = self.optimizers[p]
+        for group in optimizer.param_groups:
+            group["lr"] = self.lr()
+        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
+
+    def backward(self, loss: torch.Tensor) -> None:
+        loss.backward()  # the hooks do the stepping
+
+    def step(self) -> None:
+        self.step_count += 1
+
+    def state_dict(self) -> dict:
+        return {i: self.optimizers[p].state_dict() for i, p in enumerate(self.params)}
+
+    def load_state_dict(self, state: dict) -> None:
+        for i, p in enumerate(self.params):
+            self.optimizers[p].load_state_dict(state[i])
+
+
+def _optimizer(params, config: Config) -> torch.optim.Optimizer:
     if config.optimizer == "adafactor":
         from transformers.optimization import Adafactor
 
@@ -224,7 +334,7 @@ def _optimizer(model, config: Config) -> torch.optim.Optimizer:
         )
     if config.optimizer != "adamw":
         raise ValueError(f"unknown optimizer {config.optimizer!r}")
-    fused = next(model.parameters()).is_cuda
+    fused = params[0].is_cuda
     return torch.optim.AdamW(params, lr=config.lr, weight_decay=config.weight_decay, fused=fused)
 
 
@@ -250,12 +360,9 @@ def _save(model, tokenizer, folder: Path) -> None:
     tmp.rename(folder)  # a crash mid-save never leaves a half-written folder
 
 
-def _checkpoint(model, tokenizer, optimizer, scheduler, state, folder: Path) -> None:
+def _checkpoint(model, tokenizer, stepper, state, folder: Path) -> None:
     _save(model, tokenizer, folder)
-    torch.save(
-        {"optimizer": optimizer.state_dict(), "scheduler": scheduler.state_dict(), "state": state},
-        folder / "trainer.pt",
-    )
+    torch.save({"optimizer": stepper.state_dict(), "state": state}, folder / "trainer.pt")
 
 
 def _append(path: Path, entry: dict) -> None:

@@ -15,8 +15,9 @@ the app falls back to the rule card's own text when a check fails.
 
 | | Base model | Licence | Parameters | int4 ONNX size |
 | --- | --- | --- | --- | --- |
-| Tutor A | `HuggingFaceTB/SmolLM2-360M-Instruct` | Apache-2.0 | 362M | to fill |
-| Tutor B | `Qwen/Qwen2.5-Coder-0.5B-Instruct` | Apache-2.0 | ~494M | to fill |
+| Tutor A | `HuggingFaceTB/SmolLM2-135M-Instruct` | Apache-2.0 | 135M | to fill |
+| Tutor B | `HuggingFaceTB/SmolLM2-360M-Instruct` | Apache-2.0 | 362M | to fill |
+| Tutor C | `Qwen/Qwen2.5-Coder-0.5B-Instruct` | Apache-2.0 | ~494M | to fill |
 | Teacher (data only, never shipped) | `Qwen/Qwen3-4B-Instruct-2507`, Q4_K_M GGUF | Apache-2.0 | 4B | n/a |
 
 Confirm each licence on its Hugging Face model card when downloading, and note
@@ -44,6 +45,8 @@ and `summary.json` (steps, best validation loss, time).
 | Tutor A, int4 ONNX | | | | | |
 | Tutor B, PyTorch | | | | | |
 | Tutor B, int4 ONNX | | | | | |
+| Tutor C, PyTorch | | | | | |
+| Tutor C, int4 ONNX | | | | | |
 
 Hand scores (clarity, hint quality, accuracy) from the sheets in
 `benchmark/results/v0/`: to fill.
@@ -53,7 +56,7 @@ Hand scores (clarity, hint quality, accuracy) from the sheets in
 A tutor ships only if it stays grounded (the runtime fallback hides failures,
 but a high fallback rate means the model adds nothing), scores better than the
 template by hand, and its download size and browser latency are acceptable on
-a budget laptop (M8).
+a budget laptop and, for the smallest, a mid-range phone (M8).
 
 ## Limitations
 

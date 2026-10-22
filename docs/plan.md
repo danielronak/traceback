@@ -239,7 +239,8 @@ model (D40).
 
 - [x] `training/` package, with its own dependencies (PyTorch, transformers)
 - [x] Shortlist and pick a base model, and record why; pick the local teacher
-      model (D40) at the same time *(D42: two tutors compared, Qwen3-4B teacher)*
+      model (D40) at the same time *(D42, D45: three tutors from 135M to 0.5B
+      compared, Qwen3-4B teacher)*
 - [ ] Draft training targets with the local teacher, spot-check them with the
       review tool, and record the teacher and its licence in the data card
 - [x] SFT script (full fine-tune), with task tokens added as special tokens

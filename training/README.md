@@ -11,20 +11,24 @@ Everything runs on your own machine and costs nothing (D40).
 | `infer.py` | `Tutor`: a trained model (PyTorch or ONNX) as a callable for the evaluation harness |
 | `export.py` | ONNX export plus 4-bit quantisation, in the layout transformers.js loads |
 
-The models (D42): tutors **SmolLM2-360M-Instruct** and
-**Qwen2.5-Coder-0.5B-Instruct**, compared on quality against download size;
-teacher **Qwen3-4B-Instruct-2507**. All Apache-2.0.
+The models (D42, D45): three small tutors, **SmolLM2-135M-Instruct**,
+**SmolLM2-360M-Instruct** and **Qwen2.5-Coder-0.5B-Instruct**, compared on
+quality against download size (135M is the phone-sized end); the teacher,
+**Qwen3-4B-Instruct-2507**, only writes training answers and never ships. All
+Apache-2.0.
 
 ## Runbook: your laptop, start to finish
 
 Each step is resumable, so it's fine to stop and carry on later. Commands run
 from the repo root.
 
-### 0. Check the GPU
+### 0. Check the GPU is free
 
 ```bash
-nvidia-smi        # the RTX 3050 laptop GPU has 4 GB or 6 GB: note which
+nvidia-smi        # the RTX 3050 here has 4 GB; everything below is set for that
 ```
+
+Close anything else using the GPU (games, other notebooks) before steps 3 and 6.
 
 ### 1. Set up (once)
 
@@ -78,31 +82,42 @@ python -m pymentor_pipeline draft --model qwen3-4b-instruct-2507 --split val --l
 The order is balanced across cards, so any amount is a fair sample. Leave it
 running overnight; if it stops, the same command carries on.
 
-### 6. Fine-tune both tutors
+### 6. Fine-tune the three tutors
 
-These settings are starting points, not tested on a real GPU yet: compare the
-validation loss in each run's `log.jsonl`. The effective batch is
-`batch-size × grad-accum` = 32 in both.
+Stop the teacher first (`Ctrl+C` in its terminal): on a 4 GB GPU, training
+needs all of it. These settings are for 4 GB and are starting points, not yet
+tested on a real GPU, so compare the validation loss in each run's
+`log.jsonl` and tell me how it went.
 
 ```bash
-# SmolLM2-360M: comfortable on 6 GB; on 4 GB use --batch-size 1 --grad-accum 32
+# SmolLM2-135M: about 1.3 GB estimated, the quickest run: do it first
+python -m pymentor_training train --base HuggingFaceTB/SmolLM2-135M-Instruct \
+  --data data/generated/v1 --out training/runs/smollm2-135m \
+  --step-in-backward --grad-accum 1 --optimizer adafactor --gradient-checkpointing \
+  --batch-size 8 --lr 5e-5 --epochs 3
+
+# SmolLM2-360M: about 2.5 GB estimated
 python -m pymentor_training train --base HuggingFaceTB/SmolLM2-360M-Instruct \
   --data data/generated/v1 --out training/runs/smollm2-360m \
-  --optimizer adafactor --lr 1e-4 --gradient-checkpointing \
-  --batch-size 2 --grad-accum 16 --epochs 3
+  --step-in-backward --grad-accum 1 --optimizer adafactor --gradient-checkpointing \
+  --batch-size 8 --lr 5e-5 --epochs 3
 
-# Qwen2.5-Coder-0.5B: tight even on 6 GB; on 4 GB use a free Kaggle or Colab GPU
+# Qwen2.5-Coder-0.5B: about 3.4 GB estimated, so close everything else on the GPU
 python -m pymentor_training train --base Qwen/Qwen2.5-Coder-0.5B-Instruct \
   --data data/generated/v1 --out training/runs/qwen-coder-0.5b \
-  --optimizer adafactor --lr 1e-4 --gradient-checkpointing \
-  --batch-size 1 --grad-accum 32 --epochs 3
+  --step-in-backward --grad-accum 1 --optimizer adafactor --gradient-checkpointing \
+  --batch-size 2 --lr 3e-5 --epochs 3
 ```
 
-Add `--resume` to continue an interrupted run. Out of memory? Halve
-`--batch-size` and double `--grad-accum`, or lower `--max-length` (1,024 by
-default). Prompts run to at most about 1,600 characters (700 is typical), so
-with an answer most examples are a few hundred tokens; `train` reports how
-many examples were too long and skipped.
+`--step-in-backward` updates each weight as soon as its gradient is ready and
+then frees it, so a full set of gradients never exists (D44). The batch you
+set is then the whole batch, since there's no gradient accumulation. Add
+`--resume` to continue an interrupted run. Out of memory? Halve
+`--batch-size`, or lower `--max-length` (1,024 by default). Prompts run to at
+most about 1,600 characters (700 is typical), so most examples are a few
+hundred tokens; `train` reports how many were too long and skipped. If
+Qwen still doesn't fit, `--dtype bf16` halves its weights, at some risk that
+small updates round away.
 
 ### 7. Score, export, score again
 
@@ -113,18 +128,24 @@ python -m pymentor_training evaluate --model training/runs/smollm2-360m/web \
   --onnx model_q4.onnx --name smollm2-360m-sft-q4
 ```
 
-Repeat for `qwen-coder-0.5b`. Results land in `benchmark/results/v0/`, next to
+Repeat for `smollm2-135m` and `qwen-coder-0.5b`. Results land in `benchmark/results/v0/`, next to
 the template baseline. Commit those JSON and CSV files (never the weights,
 which `.gitignore` keeps out), then fill in the hand-scoring sheets.
 
-## Memory guide
+## Memory guide (4 GB)
 
-`train` prints an estimate before it starts. Per parameter, fp32 weights,
-gradients and Adafactor state take about 8.4 bytes: about 3.0 GB for
-SmolLM2-360M and 4.2 GB for Qwen2.5-Coder-0.5B. On top of that come the CUDA
-runtime (about 0.3 GB) and activations. Gradient checkpointing keeps
-activations small, but the scores over the whole vocabulary for each token do
-not: for a full 1,024-token sequence, about 0.3 GB for SmolLM2 (49k
-vocabulary) and 0.9 GB for Qwen (152k). Batches are padded only to their
-longest example, so real use is usually lower. `--dtype bf16` halves the weight memory, but small
-updates can round away in bf16, so use it only if nothing else fits.
+`train` prints an estimate before it starts. With the settings above (fp32
+weights, Adafactor, `--step-in-backward`), the weights take 4 bytes a
+parameter, Adafactor's state a fraction of that, and gradients only the
+largest single tensor (the vocabulary table):
+
+| | Weights | Optimizer | Gradients | Plus | Estimate |
+| --- | --- | --- | --- | --- | --- |
+| SmolLM2-135M | 0.54 GB | ~0.05 GB | 0.11 GB | CUDA ~0.4 GB, activations | ~1.3 GB |
+| SmolLM2-360M | 1.45 GB | ~0.15 GB | 0.19 GB | CUDA ~0.4 GB, activations | ~2.5 GB |
+| Qwen2.5-Coder-0.5B | 1.98 GB | ~0.2 GB | 0.54 GB | CUDA ~0.4 GB, activations | ~3.4 GB |
+
+Two things keep activations small: gradient checkpointing, and scoring the
+vocabulary only at the answer's positions (`answer_loss`), which matters most
+for Qwen's 152k vocabulary. Without `--step-in-backward`, add a full copy of
+the weights for the gradients, which is too much for Qwen on 4 GB.

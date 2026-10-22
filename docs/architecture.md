@@ -497,3 +497,29 @@ with loss scaling on pre-Ampere GPUs), Adafactor and gradient checkpointing
 for 4 to 6 GB cards. Tests train, resume and export a tiny Llama built on the
 spot, on the CPU, so CI needs no downloads. *Accepted. Re-check when
 optimum-onnx supports transformers 5.*
+
+**D44. Full fine-tuning on a 4 GB GPU: step in backward, score answers only.**
+The owner's RTX 3050 has 4 GB. Fp32 weights, gradients and Adafactor state
+alone would need about 3.0 GB for SmolLM2-360M and 4.2 GB for
+Qwen2.5-Coder-0.5B. Two changes keep it a full fine-tune that fits. First,
+`--step-in-backward` (PyTorch's "optimizer step in backward" pattern) gives
+each weight tensor its own optimizer, stepped by a hook as soon as its
+gradient is ready, which then frees it. Only the largest tensor's gradient is
+ever held, but gradient accumulation is impossible and clipping is per tensor;
+a test shows it otherwise matches the standard loop exactly. Second,
+`answer_loss` scores the vocabulary only at answer positions for
+architectures whose head is a plain projection (Llama, Qwen2, Qwen3), with a
+test showing it equals the model's own loss. Estimates: about 2.5 GB and
+3.4 GB. These are calculated, not measured; the first real run confirms them.
+LoRA was the alternative, but it changes what is being compared and adds a
+dependency. *Accepted.*
+
+**D45. ⚑ SmolLM2-135M joins Track A, for phones.** The owner wants the tutor
+to run on any basic laptop and even a mid-range phone. SmolLM2-135M-Instruct
+(Apache-2.0, roughly 100 MB at int4) gives Track A a three-point size curve
+(135M, 360M, 500M) for the comparison with Track B's from-scratch model
+(50 to 100M), and a phone-sized fallback if Track B falls short. Qwen 0.5B
+stays in the comparison but is unlikely to ship to phones. Shipped or not,
+every tutor only explains the facts the engine supplies about the learner's
+own code, and the app falls back to the card when there is no model or an
+answer fails grounding. *Accepted.*
