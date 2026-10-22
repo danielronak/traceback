@@ -33,8 +33,20 @@ engine/        Python package `pymentor`, the shared core. Standard library only
     exercises.py   exercise format, loader and test runner
     course.py      the course: units, lessons (Markdown + snippets) and exercises
     selfcheck.py   card, exercise and course checks, run under pytest and inside Pyodide
-    data/          bug injection and the training-data generator (M5)
   tests/
+pipeline/      Python package `pymentor_pipeline` (M5): never shipped to the browser (D37)
+  corpus/        seed programs and DATA_CARD.md
+  src/pymentor_pipeline/
+    corpus.py      loads seeds: corpus programs, exercise solutions, lesson snippets
+    augment.py     renamed variants of seeds
+    mutate.py      bug mutators, one realistic beginner mistake each
+    generate.py    runs mutations through the engine in killable workers, writes JSONL
+    benchmark.py   builds and freezes benchmark versions
+    evaluate.py    scores any model: grounding, length, verified fixes, latency
+    baseline.py    the template baseline (D12)
+    draft.py       teacher drafting, judged by grounding and fix verification (D40)
+    teachers.py    optional teacher adapters (Anthropic API)
+    review.py      spot-check tool for drafted targets
 curriculum/    Course content: course.toml, lessons/*.md, exercises/*.toml
 app/           Web app: Vite + TypeScript + Preact, CodeMirror 6, Pyodide in a Web Worker
   src/engine/    worker (Pyodide + engine), client (input, Stop, watchdog), types
@@ -45,7 +57,7 @@ app/           Web app: Vite + TypeScript + Preact, CodeMirror 6, Pyodide in a W
   src/settings/  the settings dialog
   src/sw.template.js  the service worker, filled in at build time
 training/      Model training (M6, M7): tokenizer, pretraining, SFT, export. PyTorch.
-benchmark/     Frozen, versioned evaluation sets (M5)
+benchmark/     Frozen, versioned evaluation sets and their results (M5)
 extension/     VS Code extension (M9)
 docs/          vision, architecture, plan
 ```
@@ -309,7 +321,9 @@ are never shown. *Accepted.*
 **D24. Exercise tests run in-process, whatever runner the engine has.** The
 browser has no subprocesses, so this is the path that ships. If the data
 pipeline (M5) runs exercises in bulk, it will need a subprocess wrapper like
-`isolated.py`. *Accepted. Revisit in M5.*
+`isolated.py`. *Accepted. Revisited in M5: the pipeline runs each whole
+analysis in a spawned worker process with a hard timeout and a memory limit,
+so the engine itself stays unchanged (D38).*
 
 **D25. ⚑ The browser ships Python 3.14 (Pyodide 314), not 3.13.** Pyodide
 moved to Python-version numbering. The 314 line is current; 0.29 (Python 3.13)
@@ -393,3 +407,54 @@ without error but prints the braces. When a plain string contains
 `{variable}` for a variable the program defines (and isn't a docstring or
 used with `.format`), the engine reports `fstring-missing-f` with a verified
 fix that adds the `f`. *Accepted.*
+
+**D37. The data pipeline is a separate package, `pymentor_pipeline`.** The
+engine is bundled into the browser, so the mutators, generator, benchmark
+builder and harness live in `pipeline/` and depend on the engine, never the
+other way round. Only `prompt.py` and `grounding.py` sit in the engine, because
+inference in the app needs them too (D10, D11). *Accepted.*
+
+**D38. ⚑ Training data comes from mutations, renamed variants and the engine's
+own verdict.** 37 mutators each inject one beginner mistake into 146 correct
+seed programs and two renamed copies of each (`augment.py`, kept only if they
+still pass cleanly). Every mutation is analysed exactly as the app would,
+inside a spawned worker with a 20-second timeout, and kept only if its first
+finding has a card. Duplicates are cases that give an identical prompt. Splits
+are by seed group (D16): a program with its variants, an exercise, or a whole
+lesson. The default run gives about 17,000 cases and 85,000 examples (five
+tasks each), covering 46 cards. Writing the mutators exposed engine blind
+spots (doubled-letter keyword typos, bare words used as values, `x = x.sort()`
+then `len(x)`, `int["5"]`, locals used before their line), fixed in the
+engine. *Accepted.*
+
+**D39. Benchmark v0: 300 cases across all 81 cards, built on Python 3.14.**
+180 mutations of test-split seeds sampled evenly by card, the 117 hand-written
+card examples (never used as seeds), and 3 course mistakes from test-split
+groups. Each case freezes the engine's finding, so later engine changes can't
+move the goalposts. Model-written code counts as a fix only if, put in place
+of the broken line(s), the engine verifies it the same way it verifies its own
+fixes, using the case's tests. The template baseline scores 100% grounded at
+18.7 words per output and never writes code: a model must match that
+grounding while being more personal, measured by hand. v0 was first built on
+the 3.13 dev environment and rebuilt on 3.14 before anything but the template
+had been scored; 2 of 300 cases differed. The builder now refuses any Python
+but the app's. *Accepted.*
+
+**D40. ⚑ Teacher drafting is provider-agnostic and not run in M5.** A teacher
+is any `(system, prompt) -> text` callable, and its drafts face the tutor's own
+bar: grounding must pass and any code must verify as a fix, or the draft is
+rejected with reasons. An optional Anthropic adapter (Messages API, or the
+Batches API at half price) is included. **Running it is the owner's
+decision:** some providers' terms of use restrict using outputs to train other
+models, so confirm the current terms of the chosen provider (for Anthropic,
+the Commercial Terms of Service and the Usage Policy) allow training this
+tutor, then record the provider, model, date and conclusion here before any
+real run. A spot-check tool (`review.py`) records human verdicts on a sample.
+The seed programs themselves were drafted with an AI coding assistant; that is
+recorded in the corpus data card. *Proposed: awaiting the owner's terms check.*
+
+**D41. The "Done when" for M5 counts verified model inputs.** The plan asked
+for 20,000 verified examples. The generator produces about 85,000 engine-
+verified prompts. Their targets wait on D40, so the training set proper is
+"drafts that passed grounding and fix verification", counted once a teacher
+has run. *Accepted.*

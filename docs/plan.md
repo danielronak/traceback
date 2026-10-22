@@ -203,30 +203,39 @@ cards matter.
 
 Depends only on M1.
 
-- [ ] `prompt.py`: task tokens and the code window (error line ±3 plus the
+- [x] `prompt.py`: task tokens and the code window (error line ±3 plus the
       enclosing function), shared by data generation and inference (D10)
-- [ ] `grounding.py`: allowed line numbers, identifiers that must exist,
+- [x] `grounding.py`: allowed line numbers, identifiers that must exist,
       code that must pass the engine, and lexical contradiction checks against
       the card (D11)
-- [ ] Seed corpus of correct beginner programs, with sources and licences
+- [x] Seed corpus of correct beginner programs, with sources and licences
       recorded
-- [ ] Bug mutators: drop a colon, misspell a name, break indentation,
+- [x] Bug mutators: drop a colon, misspell a name, break indentation,
       `==` to `=`, off-by-one `range`, remove `str()`/`int()`, drop an import,
       unclose a bracket, a Python 2 `print`, `print` instead of `return`
-- [ ] Generator CLI: mutate, run in `isolated.py`, keep examples with a matched
+- [x] Generator CLI: mutate, run in `isolated.py`, keep examples with a matched
       card, dedupe, and split by seed program (D16). Output is JSONL.
+      *(Runs in spawned workers with a hard timeout instead, D38.)*
 - [ ] Teacher drafting script: a large model drafts outputs per task. Confirm
       and document that its terms of use allow training on its outputs. Add a
-      small review tool for spot checks.
-- [ ] Benchmark v0: ~300 held-out cases (hand-written plus mutations of
+      small review tool for spot checks. *(Script and review tool done; the
+      terms check is the owner's, D40.)*
+- [x] Benchmark v0: ~300 held-out cases (hand-written plus mutations of
       held-out programs), frozen in `benchmark/v0/`
-- [ ] Evaluation harness: scores any model callable on fix correctness,
+- [x] Evaluation harness: scores any model callable on fix correctness,
       grounding rate, length and latency, and exports a hand-scoring sheet for
       clarity and hint quality
-- [ ] Template baseline scored (D12)
+- [x] Template baseline scored (D12)
 
 **Done when:** the generator produces ≥20k verified examples and the harness
 reports the template baseline.
+
+**Status:** done except the terms check. The generator gives ~85k engine-verified prompts from ~17k
+cases (D38); benchmark v0 holds 300 cases across all 81 cards, and the template
+baseline is 100% grounded (D39). The teacher script, its tests and a review
+tool exist, but **no teacher has been run**: the owner first confirms that the
+chosen provider's terms allow training on its outputs (D40). Until then, the
+training targets for M6/M7 don't exist yet.
 
 ## M6: Track A, fine-tuning an existing model (fallback and comparison)
 
