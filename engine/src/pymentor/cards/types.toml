@@ -95,6 +95,7 @@ hints = [
 fix = "brackets_to_call"
 examples = [
   { source = "word = \"hello\"\nprint(len[word])\n", after = "print(len(word))" },
+  { source = "age = int[\"14\"]\n", after = "age = int(\"14\")" },
 ]
 
 [[card]]
@@ -163,6 +164,7 @@ hints = [
 ]
 examples = [
   { source = "def greet(name):\n    print(\"Hi \" + name)\n\ngreet()\n" },
+  { source = "class Pet:\n    def __init__(self, name):\n        self.name = name\n\npet = Pet()\n" },
 ]
 
 [[card]]
@@ -246,7 +248,7 @@ hints = [
 ]
 related = ["none-from-inplace-method"]
 examples = [
-  { source = "numbers = [3, 1, 2]\nordered = numbers.sort()\nprint(ordered[0])\n" },
+  { source = "def make_list():\n    items = [1, 2]\n\nresult = make_list()\nprint(result[0])\n" },
 ]
 
 [[card]]

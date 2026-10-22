@@ -387,12 +387,16 @@ def _unbound_local(context: Context) -> Features:
         return {}
     name = match[1]
     function = enclosing_function(context.tree, context.diagnostic.line)
+    of_name = [b for b in bindings(context.tree) if b.name == name]
+    global_defined = any(b.scope == "<module>" for b in of_name)
+    scope = function.name if function else "<module>"
     return {
         "name": name,
         "function": function.name if function else None,
-        "global_defined": any(
-            b.name == name and b.scope == "<module>" for b in bindings(context.tree)
-        ),
+        "global_defined": global_defined,
+        # Only local, and created further down: lines in the wrong order.
+        "defined_later": not global_defined
+        and any(b.scope == scope and b.line > context.diagnostic.line for b in of_name),
     }
 
 
@@ -425,6 +429,10 @@ def _type_error(context: Context) -> Features:
         match = context.message_match(pattern)
         if match:
             features["obj_type"] = match[1]
+    # `int[x]`: a type (int, str, float...) used with [ ] where ( ) converts.
+    called_type = context.message_match(r"^type '(\w+)' is not subscriptable")
+    if called_type:
+        features["obj_type"] = "type"
 
     if tree is not None and context.message_match(r"is not callable"):
         call = node_at(tree, diagnostic, ast.Call)
@@ -439,6 +447,7 @@ def _type_error(context: Context) -> Features:
             "function",
             "builtin_function_or_method",
             "method",
+            "type",
         )
         node = node_at(tree, diagnostic, ast.Subscript) if tree is not None else None
         if node is not None:
@@ -452,12 +461,12 @@ def _type_error(context: Context) -> Features:
         )
 
     match = context.message_match(
-        r"^(\w+)\(\) missing (\d+) required (?:positional|keyword-only) arguments?: (.+)$"
+        r"^([\w.]+)\(\) missing (\d+) required (?:positional|keyword-only) arguments?: (.+)$"
     )
     if match:
         features.update(function=match[1], missing_count=int(match[2]), missing_args=match[3])
     match = context.message_match(
-        r"^(\w+)\(\) takes (\d+) positional arguments? but (\d+) (?:was|were) given"
+        r"^([\w.]+)\(\) takes (\d+) positional arguments? but (\d+) (?:was|were) given"
     )
     if match:
         features.update(function=match[1], takes=int(match[2]), given=int(match[3]))
@@ -481,6 +490,15 @@ def _type_error(context: Context) -> Features:
         features.get("left_type"),
         features.get("right_type"),
     ) or bool(context.message_match(r"passed to NoneType\.__format__"))
+    if tree is not None and "NoneType" in diagnostic.message:
+        on_line = [
+            n.id
+            for n in ast.walk(tree)
+            if isinstance(n, ast.Name)
+            and n.lineno == diagnostic.line
+            and isinstance(n.ctx, ast.Load)
+        ]
+        features.update(_from_inplace(tree, list(dict.fromkeys(on_line)), diagnostic.line))
     return features
 
 
@@ -554,19 +572,26 @@ def _attribute_error(context: Context) -> Features:
     if features.get("obj_type") == "NoneType" and context.tree is not None:
         node = node_at(context.tree, context.diagnostic, ast.Attribute)
         if node is not None and isinstance(node.value, ast.Name):
-            binding = latest_binding_before(context.tree, node.value.id, context.diagnostic.line)
-            value = _assigned_value(binding, context.tree) if binding else None
-            if (
-                isinstance(value, ast.Call)
-                and isinstance(value.func, ast.Attribute)
-                and value.func.attr in INPLACE_METHODS
-            ):
-                features.update(
-                    none_name=node.value.id,
-                    inplace_method=value.func.attr,
-                    inplace_line=binding.line,
-                )
+            features.update(_from_inplace(context.tree, [node.value.id], context.diagnostic.line))
     return features
+
+
+def _from_inplace(tree: ast.Module, names: list[str], line: int) -> Features:
+    """The first of ``names`` that was set to the `None` from `x = x.sort()`."""
+    for name in names:
+        binding = latest_binding_before(tree, name, line)
+        value = _assigned_value(binding, tree) if binding else None
+        if (
+            isinstance(value, ast.Call)
+            and isinstance(value.func, ast.Attribute)
+            and value.func.attr in INPLACE_METHODS
+        ):
+            return {
+                "none_name": name,
+                "inplace_method": value.func.attr,
+                "inplace_line": binding.line,
+            }
+    return {}
 
 
 @extractor("ModuleNotFoundError")

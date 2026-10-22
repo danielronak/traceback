@@ -78,10 +78,10 @@ explain = "Standard-library modules like math have to be imported before you use
 [[card]]
 id = "used-before-assignment"
 title = "`{name}` is used before it's created"
-match = { code = "NameError", when = { defined_later = true } }
+match = { code = ["NameError", "UnboundLocalError"], when = { defined_later = true } }
 priority = 20
 rule = "Python runs your program from top to bottom, so a variable or function must be created before the line that uses it."
-why = "When Python reaches line {line}, the line that creates `{name}` hasn't run yet, so at that moment the name doesn't exist. Python doesn't look ahead in your file."
+why = "When Python reaches line {line}, the line that creates `{name}` hasn't run yet, so at that moment `{name}` has no value. Python runs the lines in order and doesn't jump ahead to run the line that creates it."
 hints = [
   "Where is `{name}` created? Is that before or after line {line}?",
   "Python runs the lines in order, top to bottom.",
@@ -90,6 +90,7 @@ hints = [
 examples = [
   { source = "print(score)\nscore = 10\n" },
   { source = "greet()\n\ndef greet():\n    print(\"hi\")\n" },
+  { source = "def total():\n    print(price)\n    price = 5\n\ntotal()\n" },
 ]
 
 [card.quiz]
