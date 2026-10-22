@@ -1,0 +1,28 @@
+id = "count-vowels"
+title = "Count the vowels"
+prompt = """
+Write a function `count_vowels(text)` that returns how many vowels
+(a, e, i, o, u) are in `text`, counting capital letters too.
+"""
+starter = '''
+def count_vowels(text):
+    pass
+'''
+solution = '''
+def count_vowels(text):
+    count = 0
+    for letter in text.lower():
+        if letter in "aeiou":
+            count += 1
+    return count
+'''
+hints = [
+  "A `for` loop over a string goes through it one letter at a time.",
+  "`letter in \"aeiou\"` is `True` when the letter is a vowel.",
+  "`.lower()` turns capitals into lowercase, so you only need to check lowercase vowels.",
+]
+tests = [
+  { call = "count_vowels('hello')", expect = "2" },
+  { call = "count_vowels('sky')", expect = "0" },
+  { call = "count_vowels('AEIOU')", expect = "5" },
+]

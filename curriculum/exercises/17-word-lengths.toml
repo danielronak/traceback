@@ -1,0 +1,27 @@
+id = "word-lengths"
+title = "Word lengths"
+prompt = """
+Write a function `word_lengths(words)` that takes a list of words and returns
+a dictionary that maps each word to its length.
+`word_lengths(["hi", "cat"])` returns `{"hi": 2, "cat": 3}`.
+"""
+starter = '''
+def word_lengths(words):
+    pass
+'''
+solution = '''
+def word_lengths(words):
+    lengths = {}
+    for word in words:
+        lengths[word] = len(word)
+    return lengths
+'''
+hints = [
+  "Start with an empty dictionary: `{}`.",
+  "`lengths[word] = ...` adds a key and its value.",
+  "`len(word)` gives the number of letters.",
+]
+tests = [
+  { call = "word_lengths(['hi', 'cat'])", expect = "{'hi': 2, 'cat': 3}" },
+  { call = "word_lengths([])", expect = "{}" },
+]

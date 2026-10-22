@@ -1,0 +1,24 @@
+id = "is-even"
+title = "Even or not?"
+prompt = """
+Write a function `is_even(n)` that returns `True` if `n` is even and `False`
+if it isn't.
+"""
+starter = '''
+def is_even(n):
+    pass
+'''
+solution = '''
+def is_even(n):
+    return n % 2 == 0
+'''
+hints = [
+  "`%` gives the remainder after dividing: `7 % 2` is `1`.",
+  "An even number leaves no remainder when divided by 2.",
+  "A comparison like `x == 0` is already `True` or `False`, so you can return it directly.",
+]
+tests = [
+  { call = "is_even(4)", expect = "True" },
+  { call = "is_even(7)", expect = "False" },
+  { call = "is_even(0)", expect = "True" },
+]

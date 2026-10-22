@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .facts import Diagnostic, Severity
-from .source import LEARNER_FILENAME
+from .source import LEARNER_FILENAME, TEST_FILENAME
 from .syntax import check_syntax
 
 # Deterministic limits, so the same program always gets the same diagnosis.
@@ -51,17 +51,19 @@ class _InputExhausted(EOFError):
 
 @dataclass
 class RunResult:
-    stdout: str
+    stdout: str  # the full transcript: output, input prompts and echoed answers
     diagnostic: Diagnostic | None
     inputs_used: list[str] = field(default_factory=list)
     steps: int = 0
     # The learner's globals after the run. Exercise tests call functions from
-    # here (M2). Never serialised.
+    # here. Never serialised.
     namespace: dict[str, Any] = field(default_factory=dict, repr=False)
+    printed: str = ""  # only what the program printed (no prompts or echoes)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "stdout": self.stdout,
+            "printed": self.printed,
             "diagnostic": self.diagnostic.to_dict() if self.diagnostic else None,
             "inputs_used": self.inputs_used,
             "steps": self.steps,
@@ -70,7 +72,17 @@ class RunResult:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> RunResult:
         diagnostic = Diagnostic.from_dict(d["diagnostic"]) if d["diagnostic"] else None
-        return cls(d["stdout"], diagnostic, d["inputs_used"], d["steps"])
+        return cls(d["stdout"], diagnostic, d["inputs_used"], d["steps"], printed=d["printed"])
+
+
+@dataclass
+class Evaluation:
+    """The result of evaluating one expression (an exercise test call)."""
+
+    value: Any
+    diagnostic: Diagnostic | None
+    printed: str = ""
+    stdout: str = ""
 
 
 class _Output(io.StringIO):
@@ -81,6 +93,70 @@ class _Output(io.StringIO):
         if room > 0:
             super().write(text[:room])
         return len(text)
+
+
+class _Tee:
+    """Program output goes to both the transcript and the printed-only record."""
+
+    def __init__(self, *targets: io.StringIO) -> None:
+        self.targets = targets
+
+    def write(self, text: str) -> int:
+        for target in self.targets:
+            target.write(text)
+        return len(text)
+
+    def flush(self) -> None:
+        pass
+
+
+class _Session:
+    """One traced run of learner code: input, output capture and the step budget."""
+
+    def __init__(self, inputs: Inputs, step_limit: int, time_limit: float) -> None:
+        self.transcript = _Output()
+        self.printed = _Output()
+        self.used: list[str] = []
+        self.read_input = _make_input(inputs, self.used, self.transcript)
+        self.step_limit = step_limit
+        self.time_limit = time_limit
+        self.steps = 0
+
+    def run(self, action: Callable[[], object]) -> Diagnostic | None:
+        """Call ``action`` with learner frames traced; return the first problem."""
+        deadline = time.monotonic() + self.time_limit
+
+        def trace_lines(frame, event, arg):
+            if event == "line":
+                self.steps += 1
+                if self.steps > self.step_limit:
+                    raise _StopRun("steps", frame.f_lineno)
+                if self.steps % 10_000 == 0 and time.monotonic() > deadline:
+                    raise _StopRun("time", frame.f_lineno)
+            return trace_lines
+
+        def trace_calls(frame, event, arg):
+            # Only learner frames are traced, which keeps the overhead low.
+            return trace_lines if frame.f_code.co_filename == LEARNER_FILENAME else None
+
+        old_trace = sys.gettrace()
+        try:
+            with (
+                redirect_stdout(_Tee(self.transcript, self.printed)),
+                redirect_stderr(self.transcript),
+            ):
+                sys.settrace(trace_calls)
+                try:
+                    action()
+                finally:
+                    sys.settrace(old_trace)
+        except _StopRun as stop:
+            return _stopped(stop, self.steps, self.time_limit)
+        except SystemExit:
+            return None  # exit() and sys.exit() end the program normally
+        except BaseException as error:  # learner code can raise anything
+            return from_exception(error)
+        return None
 
 
 def execute(
@@ -96,47 +172,50 @@ def execute(
         return RunResult("", syntax_error)
 
     code = compile(source, LEARNER_FILENAME, "exec", dont_inherit=True)
-    output = _Output()
-    used: list[str] = []
-    read_input = _make_input(inputs, used, output)
+    session = _Session(inputs, step_limit, time_limit)
     learner_builtins = dict(vars(builtins))
-    learner_builtins["input"] = read_input
+    learner_builtins["input"] = session.read_input
     namespace: dict[str, Any] = {"__name__": "__main__", "__builtins__": learner_builtins}
+    diagnostic = session.run(lambda: exec(code, namespace))
+    return RunResult(
+        session.transcript.getvalue(),
+        diagnostic,
+        session.used,
+        session.steps,
+        namespace,
+        printed=session.printed.getvalue(),
+    )
 
-    steps = 0
-    deadline = time.monotonic() + time_limit
 
-    def trace_lines(frame, event, arg):
-        nonlocal steps
-        if event == "line":
-            steps += 1
-            if steps > step_limit:
-                raise _StopRun("steps", frame.f_lineno)
-            if steps % 10_000 == 0 and time.monotonic() > deadline:
-                raise _StopRun("time", frame.f_lineno)
-        return trace_lines
+def evaluate(
+    namespace: dict[str, Any],
+    expression: str,
+    inputs: Inputs = None,
+    *,
+    step_limit: int = DEFAULT_STEP_LIMIT,
+    time_limit: float = DEFAULT_TIME_LIMIT,
+) -> Evaluation:
+    """Evaluate an expression (a test call like ``double(4)``) in a learner's namespace.
 
-    def trace_calls(frame, event, arg):
-        # Only learner frames are traced, which keeps the overhead low.
-        return trace_lines if frame.f_code.co_filename == LEARNER_FILENAME else None
-
-    diagnostic = None
-    old_trace = sys.gettrace()
+    The expression is test code, compiled under TEST_FILENAME, so problems are
+    located in the learner's frames that it calls.
+    """
+    code = compile(expression, TEST_FILENAME, "eval", dont_inherit=True)
+    session = _Session(inputs, step_limit, time_limit)
+    learner_builtins = namespace["__builtins__"]
+    saved_input = learner_builtins["input"]
+    learner_builtins["input"] = session.read_input
+    result: dict[str, Any] = {}
     try:
-        with redirect_stdout(output), redirect_stderr(output):
-            sys.settrace(trace_calls)
-            try:
-                exec(code, namespace)
-            finally:
-                sys.settrace(old_trace)
-    except _StopRun as stop:
-        diagnostic = _stopped(stop, steps, time_limit)
-    except SystemExit:
-        pass  # exit() and sys.exit() end the program normally
-    except BaseException as error:  # learner code can raise anything
-        diagnostic = from_exception(error)
-
-    return RunResult(output.getvalue(), diagnostic, used, steps, namespace)
+        diagnostic = session.run(lambda: result.setdefault("value", eval(code, namespace)))
+    finally:
+        learner_builtins["input"] = saved_input
+    return Evaluation(
+        result.get("value"),
+        diagnostic,
+        printed=session.printed.getvalue(),
+        stdout=session.transcript.getvalue(),
+    )
 
 
 def _make_input(inputs: Inputs, used: list[str], output: io.StringIO) -> Callable[..., str]:

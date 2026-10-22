@@ -1,0 +1,196 @@
+# Logic errors (purple): the code runs, but an exercise test gets the wrong answer.
+# Also the crashes that only happen when a test calls the learner's function.
+# Examples carry `tests`, written exactly as in an exercise file.
+
+[[card]]
+id = "printed-not-returned"
+title = "`{function}()` prints the answer instead of returning it"
+match = { code = "test-failed", when = { printed_expected = true } }
+priority = 20
+rule = "`print()` shows a value on the screen. `return` hands it back to the code that called the function. The exercise checks what `{function}()` returns."
+why = "A function that ends without `return` gives back `None`. `{call}` should give back {expected}, so the value has to be returned: printing only displays it, and the code that called the function can't use what was printed."
+hints = [
+  "What does `{call}` give back? Try `print({call})` and see.",
+  "Showing a value and handing it back are different things in Python.",
+  "Replace the `print(...)` that shows the answer with `return ...`.",
+]
+fix = "print_to_return"
+related = ["missing-return"]
+examples = [
+  { source = "def double(n):\n    print(n * 2)\n", tests = [{ call = "double(4)", expect = "8" }], after = "    return n * 2" },
+]
+
+[[card]]
+id = "missing-return"
+title = "`{function}()` doesn't return anything"
+match = { code = "test-failed", when = { returned_none = true, has_return = false } }
+priority = 10
+rule = "A function hands back a value with `return`. Without a `return`, it gives back `None`."
+why = "`{call}` should give back {expected}, but `{function}()` reaches its end without a `return`, so Python gives back `None` automatically. Working out the answer inside the function isn't enough; the function has to return it."
+hints = [
+  "Which line of `{function}()` hands the answer back to the caller?",
+  "Without `return`, a function always gives back `None`.",
+  "End `{function}()` with `return` and the value you worked out.",
+]
+related = ["printed-not-returned"]
+examples = [
+  { source = "def double(n):\n    answer = n * 2\n", tests = [{ call = "double(4)", expect = "8" }] },
+]
+
+[[card]]
+id = "returned-text-not-number"
+title = "`{function}()` returns the text {actual}, not the number {expected}"
+match = { code = "test-failed", when = { text_not_number = true } }
+priority = 10
+rule = "Text and numbers are different types in Python. `\"8\"` is text (a `str`) and `8` is a number (an `int`), even though they look the same when printed."
+why = "The test compares values, not how they look. Different types are never equal, so `\"8\" == 8` is `False`. The value probably went through `str()`, an f-string or `input()` on the way."
+hints = [
+  "Look closely at {actual}: notice the quote marks.",
+  "Quote marks mean the value is text. Where did it become text?",
+  "Return the number itself, without turning it into text.",
+]
+examples = [
+  { source = "def double(n):\n    return str(n * 2)\n", tests = [{ call = "double(4)", expect = "8" }] },
+]
+
+[[card]]
+id = "off-by-one"
+title = "`{call}` is off by one: it returned {actual}, not {expected}"
+match = { code = "test-failed", when = { off_by_one = true } }
+rule = "An answer that's off by exactly one usually means a loop or `range` starts or stops one step early or late, or a `<` should be `<=` (or the other way round)."
+why = "`range(n)` stops just *before* `n`, and positions start at 0. Those two facts make off-by-one mistakes one of the most common logic errors in all of programming."
+hints = [
+  "Your answer is exactly one away from the right one.",
+  "Check where your loop or `range` starts and stops, and any `<` or `<=`.",
+  "Work through `{call}` by hand, writing down each value, and compare with {expected}.",
+]
+examples = [
+  { source = "def last_index(items):\n    return len(items)\n", tests = [{ call = "last_index([5, 6, 7])", expect = "2" }] },
+]
+
+[[card]]
+id = "test-failed"
+title = "`{call}` should return {expected}, but it returned {actual}"
+match = { code = "test-failed" }
+rule = "The exercise's tests call your function with example values and compare what it gives back with the right answer."
+why = "Your code runs without errors but gives a different answer, so somewhere the steps don't do what you intended. Python can't know what you meant, only what you wrote, so tracing the values by hand is the way to find it."
+hints = [
+  "Try it yourself: add `print({call})` at the bottom of your code.",
+  "Follow `{call}` line by line, writing down each variable's value.",
+  "Find the first line where a value differs from what you expected.",
+]
+examples = [
+  { source = "def double(n):\n    return n + 2\n", tests = [{ call = "double(4)", expect = "8" }] },
+]
+
+[[card]]
+id = "function-never-called"
+title = "`{uncalled_function}()` is defined but never called"
+match = { code = "wrong-output", when = { uncalled_function = true, nothing_printed = true } }
+priority = 10
+rule = "`def` only creates a function. Its code runs when you call it: `{uncalled_function}()`."
+why = "Defining a function is like writing down a recipe: nothing gets cooked until someone uses it. Your program defines `{uncalled_function}()` but never calls it, so the code inside never runs."
+hints = [
+  "Which lines of your program actually run? Which ones only define something?",
+  "A function's code runs only when the function is called.",
+  "Add a line that calls `{uncalled_function}()` after the function.",
+]
+examples = [
+  { source = "def greet():\n    print(\"Hello!\")\n", tests = [{ output = "Hello!" }] },
+]
+
+[[card]]
+id = "nothing-printed"
+title = "The program didn't print anything"
+match = { code = "wrong-output", when = { nothing_printed = true } }
+rule = "To show output, use `print()`. Working out a value isn't enough: a program only shows what it prints."
+why = "Python doesn't display values on its own when it runs a program. Every piece of output comes from a call to `print()` (or a similar function)."
+hints = [
+  "Which line of your program is meant to show the answer?",
+  "Values only appear on the screen when they're printed.",
+  "Add `print(...)` with the value that should be shown.",
+]
+examples = [
+  { source = "answer = 2 + 3\n", tests = [{ output = "5" }] },
+]
+
+[[card]]
+id = "input-joined-as-text"
+title = "The numbers were joined like text instead of added"
+match = { code = "wrong-output", when = { joined_inputs = true } }
+priority = 15
+rule = "`input()` gives back text, and `+` on two pieces of text joins them: `\"3\" + \"4\"` is `\"34\"`. Convert the answers with `int()` (or `float()`) before adding them."
+why = "Python decides what `+` means from the types on each side. Two numbers are added, but two pieces of text are joined end to end, and the answers from `input()` are always text, even when they're digits."
+hints = [
+  "Your program printed the answers side by side instead of adding them.",
+  "What type of value does `input()` give back?",
+  "Wrap each `input(...)` in `int(...)` so the answers become numbers.",
+]
+fix = "int_inputs"
+related = ["input-is-string"]
+examples = [
+  { source = "a = input()\nb = input()\nprint(a + b)\n", tests = [{ inputs = ["3", "4"], output = "7" }], after = "a = int(input())\nb = int(input())" },
+]
+
+[[card]]
+id = "wrong-output"
+title = "The output doesn't match what was expected"
+match = { code = "wrong-output" }
+rule = "When an exercise checks output, the printed text must match exactly, including spelling, capital letters, spaces and punctuation."
+why = "Output is compared character by character, because to a computer `Hello, world!` and `hello world` are simply different text. Python can't tell which differences matter to you."
+hints = [
+  "Compare your output with the expected output: {expected}.",
+  "Check capital letters, commas, spaces and the order of the lines.",
+  "Change your `print(...)` so the text matches exactly.",
+]
+examples = [
+  { source = "print(\"hello world\")\n", tests = [{ output = "Hello, world!" }] },
+]
+
+[[card]]
+id = "expected-function-misnamed"
+title = "The exercise calls `{missing_test_function}()`, but your function is called `{similar_name}`"
+match = { code = "NameError", when = { missing_test_function = true, similar_name = true } }
+priority = 61
+rule = "When an exercise asks for a function with a particular name, the tests call it by exactly that name."
+why = "The tests run `{test_call}`. Python looks for a function named exactly `{missing_test_function}` and can't find one. `{similar_name}` looks close to you, but to Python it's a completely different name."
+hints = [
+  "Compare the name in your `def` line with the name in the exercise.",
+  "Names must match exactly, including capital letters and underscores.",
+  "Rename `{similar_name}` to `{missing_test_function}`.",
+]
+examples = [
+  { source = "def dubble(n):\n    return n * 2\n", tests = [{ call = "double(4)", expect = "8" }] },
+]
+
+[[card]]
+id = "expected-function-missing"
+title = "The exercise needs a function called `{missing_test_function}()`"
+match = { code = "NameError", when = { missing_test_function = true } }
+priority = 60
+rule = "Exercises that test a function call it by name, so your code must define it: `def {missing_test_function}(...):`."
+why = "The tests run `{test_call}`, but your program never creates a function named `{missing_test_function}`, so there is nothing for Python to call."
+hints = [
+  "What should the function be called, according to the exercise?",
+  "Functions are created with a `def` line.",
+  "Write `def {missing_test_function}(...):` with the parameters the exercise describes.",
+]
+examples = [
+  { source = "print(8)\n", tests = [{ call = "double(4)", expect = "8" }] },
+]
+
+[[card]]
+id = "test-call-signature"
+title = "The exercise calls `{test_call}`, which doesn't fit your `def {test_function}` line"
+match = { code = "TypeError", message = "(missing \\d+ required|takes \\d+ positional arguments? but \\d+ (was|were) given)", when = { in_test_call = true } }
+priority = 10
+rule = "The parameters in a `def` line say how many values a function takes. The exercise's tests decide how your function will be called."
+why = "The tests run `{test_call}`. Python matched those values to your parameters and they didn't fit: {message}. The test call is fixed, so the `def` line is what needs to change."
+hints = [
+  "How many values does `{test_call}` give the function?",
+  "How many parameters does your `def {test_function}` line have?",
+  "Change the `def` line so it has one parameter for each value in `{test_call}`.",
+]
+examples = [
+  { source = "def area(width):\n    return width * width\n", tests = [{ call = "area(3, 4)", expect = "12" }] },
+]

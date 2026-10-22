@@ -4,6 +4,9 @@ pipeline need, in two calls.
 - ``check(source)``: the live, static check (syntax and style). Fast and
   side-effect free, so it is safe to call whenever typing pauses (D7).
 - ``run(source, inputs)``: the static check, then runs the program.
+
+Exercises add ``run_exercise(exercise, source)``, which runs the exercise's
+tests and turns failures into logic findings.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ from typing import Any
 
 from . import fixes
 from .cards import CardLibrary, CardRenderError
+from .exercises import Exercise, ExerciseReport, run_exercise
 from .facts import Diagnostic, Finding, Fix, Severity
 from .features import extract
 from .sandbox import DEFAULT_STEP_LIMIT, DEFAULT_TIME_LIMIT, Inputs, RunResult, execute
@@ -87,10 +91,24 @@ class Engine:
 
     # --- building findings ---------------------------------------------------
 
+    def run_exercise(self, exercise: Exercise, source: str) -> ExerciseReport:
+        """Run an exercise's tests against the learner's code (see ``exercises``)."""
+        return run_exercise(self, exercise, source)
+
     def explain(
-        self, diagnostic: Diagnostic, source: str, inputs: list[str] = (), *, with_fix: bool = True
+        self,
+        diagnostic: Diagnostic,
+        source: str,
+        inputs: list[str] = (),
+        *,
+        with_fix: bool = True,
+        recheck: fixes.Recheck | None = None,
     ) -> Finding:
-        """Match a diagnostic to its card and find a verified fix."""
+        """Match a diagnostic to its card and find a verified fix.
+
+        ``recheck`` re-derives the facts for a candidate fix when a plain run
+        can't (exercise tests); see ``fixes.verify``.
+        """
         features = extract(diagnostic, source)
         card = self.cards.match(diagnostic, features)
         rendered = None
@@ -101,7 +119,7 @@ class Engine:
                 card = None  # a card that can't be filled in is not shown (tests prevent this)
         fix = None
         if card is not None and with_fix:
-            fix = self._fix(card.fix, diagnostic, source, features, list(inputs))
+            fix = self._fix(card.fix, diagnostic, source, features, list(inputs), recheck)
         return Finding(diagnostic, rendered, fix, features)
 
     def _fix(
@@ -111,11 +129,12 @@ class Engine:
         source: str,
         features: dict[str, Any],
         inputs: list[str],
+        recheck: fixes.Recheck | None = None,
     ) -> Fix | None:
         if spec is None:
             return None
         for candidate in fixes.candidates(spec, source, diagnostic, features):
-            if fixes.verify(diagnostic, candidate, self._replay, inputs):
+            if fixes.verify(diagnostic, candidate, self._replay, inputs, recheck):
                 line, before, after = changed_region(source, candidate)
                 return Fix(source=candidate, before=before, after=after, line=line)
         return None

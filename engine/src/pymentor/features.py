@@ -525,3 +525,73 @@ def _names_changed_in(body: list[ast.stmt]) -> set[str]:
             elif isinstance(node, ast.Global | ast.Nonlocal):
                 changed.update(node.names)
     return changed
+
+
+# --- exercises: test calls and logic errors ---------------------------------------
+
+
+@extractor("NameError")
+def _missing_test_function(context: Context) -> Features:
+    """The exercise calls a function the learner hasn't written (or named differently)."""
+    data = context.diagnostic.data
+    if not data.get("in_test_call") or data.get("name") != data.get("test_function"):
+        return {}
+    return {"missing_test_function": data["test_function"]}
+
+
+@extractor("test-failed")
+def _test_failed(context: Context) -> Features:
+    data = context.diagnostic.data
+    printed = data.get("printed", "").strip()
+    returned_none = data.get("actual") == "None" and data.get("expected") != "None"
+    features: Features = {
+        "returned_none": returned_none,
+        "printed_expected": returned_none
+        and bool(printed)
+        and printed.splitlines()[-1].strip() == data.get("expected_str"),
+        "text_not_number": data.get("actual_type") == "str"
+        and data.get("expected_type") in ("int", "float")
+        and data.get("actual_str") == data.get("expected_str"),
+        "off_by_one": False,
+        "has_return": None,
+    }
+    if data.get("expected_type") == data.get("actual_type") == "int":
+        features["off_by_one"] = abs(int(data["expected_str"]) - int(data["actual_str"])) == 1
+    if context.tree is not None:
+        function = next(
+            (
+                n
+                for n in ast.walk(context.tree)
+                if isinstance(n, ast.FunctionDef) and n.name == data.get("function")
+            ),
+            None,
+        )
+        if function is not None:
+            features["has_return"] = any(
+                isinstance(n, ast.Return) and n.value is not None for n in ast.walk(function)
+            )
+    return features
+
+
+@extractor("wrong-output")
+def _wrong_output(context: Context) -> Features:
+    data = context.diagnostic.data
+    printed = ast.literal_eval(data["actual"]) if "actual" in data else ""
+    inputs = [i.strip() for i in data.get("inputs", [])]
+    features: Features = {
+        "nothing_printed": printed == "",
+        # "3" and "4" printed as "34": answers from input() joined as text.
+        "joined_inputs": len(inputs) >= 2
+        and all(re.fullmatch(r"-?\d+", i) for i in inputs)
+        and printed.strip() == "".join(inputs),
+    }
+    if context.tree is not None:
+        defined = [n.name for n in context.tree.body if isinstance(n, ast.FunctionDef)]
+        called = {
+            n.func.id
+            for n in ast.walk(context.tree)
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+        }
+        never_called = [name for name in defined if name not in called]
+        features["uncalled_function"] = never_called[0] if never_called else None
+    return features

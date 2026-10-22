@@ -1,0 +1,24 @@
+id = "add-two-numbers"
+title = "Fix the adding machine"
+prompt = """
+This program should ask for two numbers and print their sum. But when you
+type `3` and `4`, it prints `34` instead of `7`. Find out why, and fix it.
+"""
+starter = '''
+a = input("First number: ")
+b = input("Second number: ")
+print(a + b)
+'''
+solution = '''
+a = int(input("First number: "))
+b = int(input("Second number: "))
+print(a + b)
+'''
+hints = [
+  "Try it with different numbers. What does the program actually do with them?",
+  "What type of value does `input()` give back?",
+]
+tests = [
+  { inputs = ["3", "4"], output = "7" },
+  { inputs = ["10", "-2"], output = "8" },
+]

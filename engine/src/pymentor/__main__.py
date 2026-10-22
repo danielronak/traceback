@@ -3,6 +3,7 @@
 python -m pymentor check my_program.py
 python -m pymentor check my_program.py --run --input 14 --input Ada
 python -m pymentor check my_program.py --run --json
+python -m pymentor exercise curriculum/exercises/04-double.toml my_answer.py
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import sys
 from pathlib import Path
 
 from .engine import Engine, Report
+from .exercises import parse_exercise
 from .facts import Finding, Severity
 from .isolated import run_isolated
 
@@ -34,8 +36,14 @@ def main(argv: list[str] | None = None) -> int:
         "--input", action="append", default=[], help="an answer for input(); repeatable"
     )
     check.add_argument("--json", action="store_true", help="print the report as JSON")
+    exercise = commands.add_parser("exercise", help="run an exercise's tests on a file")
+    exercise.add_argument("exercise", type=Path, help="the exercise's .toml file")
+    exercise.add_argument("file", type=Path, nargs="?", help="your answer (default: the starter)")
+    exercise.add_argument("--json", action="store_true", help="print the report as JSON")
     args = parser.parse_args(argv)
 
+    if args.command == "exercise":
+        return _exercise(args)
     source = args.file.read_text(encoding="utf-8")
     # Learner programs run in a killable subprocess here, so a hang can't
     # freeze the terminal.
@@ -47,6 +55,33 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(_describe(report))
     return 1 if report.blocking else 0
+
+
+def _exercise(args: argparse.Namespace) -> int:
+    exercise = parse_exercise(args.exercise.read_text(encoding="utf-8"), str(args.exercise))
+    source = args.file.read_text(encoding="utf-8") if args.file else exercise.starter
+    report = Engine().run_exercise(exercise, source)
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2))
+        return 0 if report.passed else 1
+    lines = [f"{exercise.title}\n"]
+    for result in report.results:
+        test = result.test
+        label = test.call if test.kind == "call" else f"output with input {list(test.inputs)}"
+        if result.passed:
+            lines.append(f"  pass  {label}")
+        elif result.error:
+            lines.append(f"  FAIL  {label}: crashed with {result.error.code}")
+        else:
+            if test.kind == "call":
+                expected, actual = test.expect_text, result.actual
+            else:
+                expected, actual = repr(test.output), repr(result.actual.rstrip("\n"))
+            lines.append(f"  FAIL  {label}: expected {expected}, got {actual}")
+    lines.append("\nAll tests pass!" if report.passed else "")
+    lines.extend(_describe_finding(f) for f in report.findings)
+    print("\n".join(lines).rstrip() + "\n")
+    return 0 if report.passed else 1
 
 
 def _describe(report: Report) -> str:

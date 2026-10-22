@@ -1,0 +1,22 @@
+id = "countdown"
+title = "Countdown"
+prompt = """
+Print a rocket countdown: the numbers 5, 4, 3, 2 and 1, one per line,
+then `Lift off!`.
+"""
+starter = '''
+# Count down from 5 to 1, then print Lift off!
+'''
+solution = '''
+for n in range(5, 0, -1):
+    print(n)
+print("Lift off!")
+'''
+hints = [
+  "A `for` loop can repeat the printing for you.",
+  "`range(start, stop, step)` can count backwards with a step of `-1`. It stops just before `stop`.",
+  "`Lift off!` is printed once, after the loop, so it isn't indented.",
+]
+tests = [
+  { output = "5\n4\n3\n2\n1\nLift off!" },
+]

@@ -30,9 +30,10 @@ engine/        Python package `pymentor`, the shared core. Standard library only
     engine.py      the public Engine API: check(), run()
     prompt.py      the model input format (M5), shared by training and inference
     grounding.py   the faithfulness checker for model output (M5)
-    exercises/     exercise format and test runner (M2)
+    exercises.py   exercise format, loader and test runner
     data/          bug injection and the training-data generator (M5)
   tests/
+curriculum/    Course content: exercises/*.toml now, lessons in M4
 app/           Web app (M3): Vite + TypeScript, CodeMirror 6, Pyodide in a Web Worker
 training/      Model training (M6, M7): tokenizer, pretraining, SFT, export. PyTorch.
 benchmark/     Frozen, versioned evaluation sets (M5)
@@ -272,3 +273,29 @@ common variants of a mistake without guessing. A fix that only moves the error
 is rejected: in `"Next: " + age + 1`, wrapping `input()` in `int()` would fail
 again on the same line, so no fix is offered and the card's hints do the
 teaching. *Accepted.*
+
+**D21. Exercises live in `curriculum/`, not in the engine package.** Rule
+cards are the engine's knowledge, so they ship inside it. Exercises are course
+content that will grow with lessons in M4 and be edited by teachers. The
+engine provides the format, loader and runner; the app bundles the
+curriculum. A test validates every exercise in CI. *Accepted.*
+
+**D22. A failing test is a LOGIC diagnostic at the function's `def` line, and
+only the first failure becomes a finding.** Several failing tests for one
+function usually share one cause, and teaching one thing at a time is the
+design doc's principle. All results are still reported for the test panel. A
+crash *in the test call itself* (the function is missing, or takes different
+arguments) also points at the `def` line, not at line 1 of the learner's file.
+*Accepted.*
+
+**D23. Inside an exercise, fixes are verified by re-running its tests.** A
+typo inside a function only crashes when a test calls it, so a plain run of
+the program would "verify" any fix. `fixes.verify` takes a `recheck` function
+that re-derives the facts from the exercise's tests. A logic fix must make its
+own failing test pass without causing a crash. Without a recheck, logic fixes
+are never shown. *Accepted.*
+
+**D24. Exercise tests run in-process, whatever runner the engine has.** The
+browser has no subprocesses, so this is the path that ships. If the data
+pipeline (M5) runs exercises in bulk, it will need a subprocess wrapper like
+`isolated.py`. *Accepted. Revisit in M5.*

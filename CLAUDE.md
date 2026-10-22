@@ -35,10 +35,11 @@ Read these before making significant changes:
 ## Repository layout
 
 ```
-engine/      Python package `pymentor`: the shared core. Standard library only. (M1 done)
+engine/      Python package `pymentor`: the shared core. Standard library only. (M1, M2 done)
   src/pymentor/        engine modules (see docs/architecture.md for each)
   src/pymentor/cards/  the rule-card library (TOML), one file per topic
   tests/               test_cards.py self-tests every card from its examples
+curriculum/  course content: exercises/NN-id.toml (lessons come in M4)
 app/         web app (M3, not started)
 training/    model training (M6/M7, not started)
 benchmark/   frozen evaluation sets (M5, not started)
@@ -56,6 +57,7 @@ pytest engine                                # tests
 ruff check . && ruff format --check .        # lint and format check
 ruff format .                                # auto-format
 python -m pymentor check path/to/file.py --run --input 5   # try the engine
+python -m pymentor exercise curriculum/exercises/04-double.toml answer.py
 ```
 
 CI (`.github/workflows/ci.yml`) runs lint, the format check and the tests.
@@ -103,6 +105,24 @@ Card text rules:
 - Use UK English (colour, recognise), matching the design doc.
 - Placeholders such as `{name}` and `{line}` are filled from diagnostic facts
   and features. Never put facts in card text that the engine didn't produce.
+
+## Exercises
+
+Exercises live in `curriculum/exercises/NN-id.toml`, one per file. The number
+sets the order and the rest must match `id`. Each has `id`, `title`, `prompt`
+(Markdown), `starter`, `solution`, up to 3 `hints`, and `tests`:
+
+```toml
+tests = [
+  { call = "double(4)", expect = "8" },          # expect is a Python literal
+  { inputs = ["3", "4"], output = "7" },         # printed output; prompts don't count
+]
+```
+
+`engine/tests/test_curriculum.py` checks every exercise: the solution must
+pass with **no findings at all** (it's the model answer), and the starter must
+compile, fail, and get a rule card as its first finding. A "fix the bug"
+starter should aim at a specific card.
 
 ## Testing
 
