@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from pymentor_pipeline import draft, review
+from pymentor_pipeline import draft, review, teachers
 from pymentor_pipeline.generate import read_jsonl
 
 
@@ -55,10 +55,10 @@ def test_code_that_isnt_a_working_fix_is_rejected(data):
     assert ["declined"] in reasons
 
 
-def test_batch_outputs_are_judged_the_same_way(data):
+def test_offline_outputs_are_judged_the_same_way(data):
     examples = read_jsonl(data / "examples-train.jsonl")[:4]
     outputs = [(e["case"], e["task"], card_teacher("", e["prompt"])) for e in examples]
-    tally = draft.accept_batch(data, "train", outputs, name="batch")
+    tally = draft.accept_outputs(data, "train", outputs, name="batch")
     assert sum(tally.values()) == 4
 
 
@@ -71,3 +71,42 @@ def test_review_records_verdicts_and_summarises(data):
     notes = [json.loads(line)["note"] for line in (data / "reviews-val.jsonl").open()]
     assert "too wordy" in notes
     assert review.summary(data, "val")["good"] == 0.5
+
+
+def test_the_local_teacher_talks_to_a_server_on_this_machine():
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    seen = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            seen.append(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
+            reply = {
+                "choices": [{"message": {"content": "Look at line 2."}, "finish_reason": "stop"}]
+            }
+            data = json.dumps(reply).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        url = f"http://127.0.0.1:{server.server_port}/v1/chat/completions"
+        teach = teachers.local_teacher(url, model="tiny")
+        assert teach("system text", "prompt text") == "Look at line 2."
+    finally:
+        server.shutdown()
+    assert seen[0]["model"] == "tiny"
+    assert [m["role"] for m in seen[0]["messages"]] == ["system", "user"]
+
+
+def test_teachers_must_be_local():
+    for url in ("https://api.example.com/v1/chat/completions", "http://10.0.0.5:8080/v1"):
+        with pytest.raises(ValueError, match="locally"):
+            teachers.local_teacher(url)

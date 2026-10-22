@@ -204,7 +204,8 @@ Use `##` for sections (the lesson title is the heading above them).
 - The prompt format is defined once, in `pymentor.prompt`. Data generation,
   evaluation and inference all call it. Never duplicate it.
 - Use only permissively licensed models and data. Record every source and its
-  licence in a data or model card. Before training on a large model's outputs,
-  confirm its terms of use allow it.
+  licence in a data or model card.
+- Everything runs locally and free, including making training data: teachers
+  are open-weight models on this machine, never a hosted or paid API (D40).
 - Split train and evaluation data by seed program (D16). Never modify a frozen
   benchmark version; create a new version instead.

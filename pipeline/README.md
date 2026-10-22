@@ -6,6 +6,10 @@ the browser never downloads it (D37). Standard library plus the engine.
 ```bash
 uv pip install -e "pipeline[dev]"          # once, after the engine
 python -m pymentor_pipeline generate        # writes data/generated/v1/
+python -m pymentor_pipeline evaluate --model template   # scores on benchmark v0
+llama-server -m teacher.gguf --port 8080    # any local model server (D40)
+python -m pymentor_pipeline draft --model teacher --limit 500
+python -m pymentor_pipeline review          # spot-check the drafts
 pytest pipeline
 ```
 
@@ -16,6 +20,10 @@ pytest pipeline
 | `mutate.py` | Bug mutators: one realistic beginner mistake per mutation |
 | `generate.py` | Runs every mutation through the engine in killable workers, keeps carded findings, dedupes, splits by seed group (D16) and writes JSONL |
 | `records.py` | Findings as JSON (with the features grounding needs) and back |
+| `benchmark.py` | Builds and freezes benchmark versions (`benchmark/`) |
+| `evaluate.py`, `baseline.py` | Scores any model on a benchmark; the template baseline (D12) |
+| `draft.py`, `teachers.py` | A local open-weight teacher writes targets, judged by grounding and fix verification (D40) |
+| `review.py` | Spot-check drafted targets by hand |
 
 The output, in `data/generated/v1/` (not committed):
 

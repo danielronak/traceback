@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib
 import json
 from pathlib import Path
 
@@ -33,22 +32,18 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--version", default=benchmark.VERSION)
     ev.add_argument("--name", help="results name (default: the model's)")
 
-    dr = commands.add_parser("draft", help="have a teacher model write training targets")
-    dr.add_argument("--teacher", required=True, help="'anthropic' or module:function")
+    dr = commands.add_parser("draft", help="have a local teacher model write training targets")
+    dr.add_argument("--url", default=teachers.DEFAULT_URL, help="the local model server")
+    dr.add_argument("--model", default="local", help="the teacher's name, as the server knows it")
     dr.add_argument("--data", type=Path, default=REPO / "data" / "generated" / "v1")
     dr.add_argument("--split", default="train")
     dr.add_argument("--limit", type=int, default=None)
-    dr.add_argument("--model", default=None, help="for --teacher anthropic")
 
-    bs = commands.add_parser("batch-submit", help="send a split to the Anthropic Batches API")
-    bs.add_argument("--data", type=Path, default=REPO / "data" / "generated" / "v1")
-    bs.add_argument("--split", default="train")
-    bs.add_argument("--limit", type=int, default=None)
-
-    bc = commands.add_parser("batch-collect", help="judge a finished batch's outputs")
-    bc.add_argument("batch_id")
-    bc.add_argument("--data", type=Path, default=REPO / "data" / "generated" / "v1")
-    bc.add_argument("--split", default="train")
+    im = commands.add_parser("import", help="judge teacher outputs made offline (JSONL)")
+    im.add_argument("outputs", type=Path, help="lines of {case, task, output}")
+    im.add_argument("--name", required=True, help="the teacher model that wrote them")
+    im.add_argument("--data", type=Path, default=REPO / "data" / "generated" / "v1")
+    im.add_argument("--split", default="train")
 
     rv = commands.add_parser("review", help="spot-check drafted targets by hand")
     rv.add_argument("--data", type=Path, default=REPO / "data" / "generated" / "v1")
@@ -72,20 +67,12 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "evaluate":
         _evaluate(args)
     elif args.command == "draft":
-        if args.teacher == "anthropic":
-            teacher = teachers.anthropic_teacher(**({"model": args.model} if args.model else {}))
-            name = args.model or teachers.DEFAULT_MODEL
-        else:
-            module, _, function = args.teacher.partition(":")
-            teacher, name = getattr(importlib.import_module(module), function), args.teacher
-        draft.draft(args.data, args.split, teacher, name=name, limit=args.limit)
-    elif args.command == "batch-submit":
-        examples = read_jsonl(args.data / f"examples-{args.split}.jsonl")[: args.limit]
-        batch_id = teachers.submit_anthropic_batch(examples, draft.system_prompt())
-        print(f"submitted {len(examples)} requests as batch {batch_id}")
-    elif args.command == "batch-collect":
-        results = teachers.anthropic_batch_results(args.batch_id)
-        tally = draft.accept_batch(args.data, args.split, results, name=teachers.DEFAULT_MODEL)
+        teacher = teachers.local_teacher(args.url, model=args.model)
+        draft.draft(args.data, args.split, teacher, name=args.model, limit=args.limit)
+    elif args.command == "import":
+        rows = read_jsonl(args.outputs)
+        triples = ((r["case"], r["task"], r.get("output")) for r in rows)
+        tally = draft.accept_outputs(args.data, args.split, triples, name=args.name)
         print(f"{args.split}: {dict(tally)}")
     elif args.command == "review":
         if not args.summary:

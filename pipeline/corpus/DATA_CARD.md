@@ -31,9 +31,8 @@ The standalone programs (001 to 100) were drafted with an AI coding assistant
 engine as described below. The exercise solutions and lesson snippets were
 written the same way. So the seeds are model output, though only as *inputs*:
 they are correct programs that the mutators break, never the explanations the
-tutor model learns to write. Whether the assistant's terms of use allow this
-use is the project owner's call, and is recorded with the teacher-drafting
-decision (M5).
+tutor model learns to write. Those explanations come from a local
+open-weight teacher (D40).
 
 If outside code is ever added, record each source here, with its licence and
 how it was filtered. Only permissively licensed code (MIT, Apache 2.0, BSD,

@@ -45,7 +45,7 @@ pipeline/      Python package `pymentor_pipeline` (M5): never shipped to the bro
     evaluate.py    scores any model: grounding, length, verified fixes, latency
     baseline.py    the template baseline (D12)
     draft.py       teacher drafting, judged by grounding and fix verification (D40)
-    teachers.py    optional teacher adapters (Anthropic API)
+    teachers.py    the local teacher adapter (a model server on this machine only)
     review.py      spot-check tool for drafted targets
 curriculum/    Course content: course.toml, lessons/*.md, exercises/*.toml
 app/           Web app: Vite + TypeScript + Preact, CodeMirror 6, Pyodide in a Web Worker
@@ -440,21 +440,27 @@ the 3.13 dev environment and rebuilt on 3.14 before anything but the template
 had been scored; 2 of 300 cases differed. The builder now refuses any Python
 but the app's. *Accepted.*
 
-**D40. ⚑ Teacher drafting is provider-agnostic and not run in M5.** A teacher
-is any `(system, prompt) -> text` callable, and its drafts face the tutor's own
-bar: grounding must pass and any code must verify as a fix, or the draft is
-rejected with reasons. An optional Anthropic adapter (Messages API, or the
-Batches API at half price) is included. **Running it is the owner's
-decision:** some providers' terms of use restrict using outputs to train other
-models, so confirm the current terms of the chosen provider (for Anthropic,
-the Commercial Terms of Service and the Usage Policy) allow training this
-tutor, then record the provider, model, date and conclusion here before any
-real run. A spot-check tool (`review.py`) records human verdicts on a sample.
-The seed programs themselves were drafted with an AI coding assistant; that is
-recorded in the corpus data card. *Proposed: awaiting the owner's terms check.*
+**D40. ⚑ Teachers are local, open-weight and free; never a hosted or paid
+API.** The whole project stays local and free, including how its training data
+is made. A teacher is a permissively licensed open-weight model running on the
+owner's machine behind a local chat-completions server (llama.cpp's
+`llama-server` or Ollama); `teachers.py` refuses any address that isn't this
+machine. Its drafts face the tutor's own bar: grounding must pass and any code
+must verify as a fix, or the draft is rejected with reasons. A spot-check tool
+(`review.py`) records human verdicts on a sample. The teacher can be larger
+than the tutor, since it never ships, but it must fit the laptop (RTX 3050):
+roughly 3–8B parameters at 4-bit. Candidates to check, confirming the licence on
+each model card at download time: Qwen2.5-7B-Instruct (Apache-2.0),
+Mistral-7B-Instruct-v0.3 (Apache-2.0), Phi-3.5-mini-instruct (MIT), or newer
+equivalents. Record the chosen model, its licence and the run date in the data
+card. An earlier draft of this decision included an adapter for a paid API;
+it was removed because it broke the free, local principle. The seed programs
+were drafted with an AI coding assistant during development; that is recorded
+in the corpus data card. *Accepted. The teacher model is picked with M6's base
+model shortlist.*
 
 **D41. The "Done when" for M5 counts verified model inputs.** The plan asked
 for 20,000 verified examples. The generator produces about 85,000 engine-
-verified prompts. Their targets wait on D40, so the training set proper is
-"drafts that passed grounding and fix verification", counted once a teacher
-has run. *Accepted.*
+verified prompts. Their targets come from a local teacher (D40), so the
+training set proper is "drafts that passed grounding and fix verification",
+counted once a teacher has run. *Accepted.*

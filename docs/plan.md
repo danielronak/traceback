@@ -216,10 +216,9 @@ Depends only on M1.
 - [x] Generator CLI: mutate, run in `isolated.py`, keep examples with a matched
       card, dedupe, and split by seed program (D16). Output is JSONL.
       *(Runs in spawned workers with a hard timeout instead, D38.)*
-- [ ] Teacher drafting script: a large model drafts outputs per task. Confirm
-      and document that its terms of use allow training on its outputs. Add a
-      small review tool for spot checks. *(Script and review tool done; the
-      terms check is the owner's, D40.)*
+- [x] Teacher drafting script: a local open-weight model drafts outputs per
+      task, judged by grounding and fix verification, with a small review
+      tool for spot checks. No hosted or paid APIs (D40).
 - [x] Benchmark v0: ~300 held-out cases (hand-written plus mutations of
       held-out programs), frozen in `benchmark/v0/`
 - [x] Evaluation harness: scores any model callable on fix correctness,
@@ -230,17 +229,19 @@ Depends only on M1.
 **Done when:** the generator produces ≥20k verified examples and the harness
 reports the template baseline.
 
-**Status:** done except the terms check. The generator gives ~85k engine-verified prompts from ~17k
+**Status:** done. The generator gives ~85k engine-verified prompts from ~17k
 cases (D38); benchmark v0 holds 300 cases across all 81 cards, and the template
-baseline is 100% grounded (D39). The teacher script, its tests and a review
-tool exist, but **no teacher has been run**: the owner first confirms that the
-chosen provider's terms allow training on its outputs (D40). Until then, the
-training targets for M6/M7 don't exist yet.
+baseline is 100% grounded (D39). Drafting works with any local model server,
+but no teacher has run yet: the teacher model is picked alongside M6's base
+model (D40).
 
 ## M6: Track A, fine-tuning an existing model (fallback and comparison)
 
 - [ ] `training/` package, with its own dependencies (PyTorch, transformers)
-- [ ] Shortlist and pick a base model, and record why
+- [ ] Shortlist and pick a base model, and record why; pick the local teacher
+      model (D40) at the same time
+- [ ] Draft training targets with the local teacher, spot-check them with the
+      review tool, and record the teacher and its licence in the data card
 - [ ] SFT script (full fine-tune), with task tokens added as special tokens
 - [ ] Evaluate, quantise to int4 ONNX, then re-evaluate, since tiny models are
       sensitive to quantisation

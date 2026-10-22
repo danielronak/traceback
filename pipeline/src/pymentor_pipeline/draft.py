@@ -1,4 +1,4 @@
-"""Teacher drafting: a large model writes the training targets.
+"""Teacher drafting: a local open-weight model writes the training targets.
 
 For each generated example, a *teacher* (any callable ``(system, prompt) ->
 text``) writes the answer the tutor model should learn to give. Every draft is
@@ -12,11 +12,10 @@ Drafts that pass go to ``drafts-<split>.jsonl`` as training targets; the rest
 go to ``rejected-<split>.jsonl`` with the reasons, for inspection. Runs are
 resumable: examples already drafted or rejected are skipped.
 
-**This module never picks a provider or runs on its own.** Whether a
-provider's terms of use allow training on its outputs is the project owner's
-decision (CLAUDE.md, "Model and training"); record it in docs/architecture.md
-before a real run. ``teachers.py`` has an optional adapter for the Anthropic
-API.
+Teachers run locally and are free: open-weight models with permissive
+licences, never a hosted or paid API (D40). Record each teacher and its licence
+in the data card before training on its drafts. ``teachers.py`` talks to a
+model server on this machine.
 """
 
 from __future__ import annotations
@@ -127,10 +126,10 @@ def draft(
     return tally
 
 
-def accept_batch(
+def accept_outputs(
     data: Path, split: str, outputs: Iterable[tuple[str, str, str | None]], *, name: str
 ) -> Counter[str]:
-    """Judge outputs that came back from a batch job: ``(case, task, text)`` triples."""
+    """Judge outputs a local teacher made offline, as ``(case, task, text)`` triples."""
     cases = {c["id"]: c for c in read_jsonl(data / f"cases-{split}.jsonl")}
     prompts = {_key(e): e["prompt"] for e in read_jsonl(data / f"examples-{split}.jsonl")}
     tally: Counter[str] = Counter()

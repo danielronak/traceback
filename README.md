@@ -22,7 +22,7 @@ current milestone.
 | Correction engine and 81 rule cards | [`engine/`](engine/) | Working |
 | Course: 9 lessons, 18 exercises | [`curriculum/`](curriculum/) | Working (M4) |
 | Web app (offline, installable) | [`app/`](app/) | Working; [deploy guide](docs/deploy.md) |
-| Training data, benchmark and evaluation harness | [`pipeline/`](pipeline/), [`benchmark/`](benchmark/) | Working (M5); teacher drafting awaits a terms check |
+| Training data, benchmark and evaluation harness | [`pipeline/`](pipeline/), [`benchmark/`](benchmark/) | Working (M5) |
 | Tutor model training | `training/` | Planned (M6, M7) |
 | VS Code extension | `extension/` | Planned (M9) |
 
