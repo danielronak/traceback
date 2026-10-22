@@ -31,10 +31,11 @@ engine/        Python package `pymentor`, the shared core. Standard library only
     prompt.py      the model input format (M5), shared by training and inference
     grounding.py   the faithfulness checker for model output (M5)
     exercises.py   exercise format, loader and test runner
+    course.py      lesson format and the course outline (units of lessons and exercises)
     selfcheck.py   card and curriculum checks, run under pytest and inside Pyodide
     data/          bug injection and the training-data generator (M5)
   tests/
-curriculum/    Course content: exercises/*.toml now, lessons in M4
+curriculum/    Course content: course.toml (the outline), lessons/*.md, exercises/*.toml
 app/           Web app: Vite + TypeScript + Preact, CodeMirror 6, Pyodide in a Web Worker
   src/engine/    worker (Pyodide + engine), client (input, Stop, watchdog), types
   src/editor/    CodeMirror setup and position mapping
@@ -344,3 +345,15 @@ send a message per write and re-render per message, freezing the page. The
 worker flushes every 50 ms or 4 KB (and before `input()` waits, and at the
 end), and the page renders at most once per frame, flushing when a run
 finishes so the last output always precedes the closing note. *Accepted.*
+
+**D31. Lessons are Markdown with TOML front matter, and every `python` block is
+checked.** Teachers can write Markdown without learning a schema, and the front
+matter is parsed with `tomllib`, so there is still one parser. Each `python`
+block is a runnable snippet: it must run with no findings at all (learners
+copy what lessons show), or name the card it demonstrates with
+`mistake=CARD-ID`, and that card must be its first finding. That ties lessons
+to cards, so a Python upgrade that changes a message breaks the lesson's check
+as well as the card's. Inputs come from `input=VALUE` options. The order of the
+course lives in one file, `course.toml`, rather than in file-name numbers, so
+moving a step is a one-line change; numbers in file names stay only to keep
+folders readable. *Accepted.*

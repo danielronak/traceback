@@ -1,0 +1,62 @@
+# The beginner course: lessons and exercises in the order a learner meets them.
+# Every lesson in lessons/ and every exercise in exercises/ appears exactly once.
+title = "Python from zero"
+
+[[unit]]
+id = "first-steps"
+title = "First steps"
+steps = [
+  { lesson = "printing" },
+  { exercise = "hello-world" },
+  { lesson = "variables" },
+  { lesson = "input" },
+  { exercise = "greet-by-name" },
+  { exercise = "add-two-numbers" },
+]
+
+[[unit]]
+id = "functions"
+title = "Functions"
+steps = [
+  { lesson = "functions" },
+  { exercise = "double" },
+  { exercise = "rectangle-area" },
+]
+
+[[unit]]
+id = "decisions"
+title = "Making decisions"
+steps = [
+  { lesson = "if-else" },
+  { exercise = "is-even" },
+  { exercise = "bigger" },
+  { exercise = "grade" },
+]
+
+[[unit]]
+id = "loops"
+title = "Doing things again and again"
+steps = [
+  { exercise = "countdown" },
+  { exercise = "sum-list" },
+  { exercise = "count-vowels" },
+  { exercise = "average" },
+]
+
+[[unit]]
+id = "lists-and-text"
+title = "Lists and text"
+steps = [
+  { exercise = "first-and-last" },
+  { exercise = "reverse-word" },
+]
+
+[[unit]]
+id = "putting-it-together"
+title = "Putting it together"
+steps = [
+  { exercise = "fizzbuzz" },
+  { exercise = "times-table" },
+  { exercise = "word-lengths" },
+  { exercise = "largest-index" },
+]

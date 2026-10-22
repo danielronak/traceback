@@ -167,18 +167,40 @@ checked by tests or measured; see above)
 then Tab (CodeMirror's convention) but nothing says so on screen; and the
 budgets are measured on a desktop CPU slowed down, not on a real Chromebook.
 
-## M4: Learning content and teaching behaviours (Phase 1 ships)
+## M4: Learning content and teaching behaviours (Phase 1 ships) 🚧
+
+Built in this order, so each step ships something a learner can use. The
+engine owns the formats and their validation; the app only displays them.
 
 - [ ] Course structure: lessons (Markdown with runnable snippets) and
       exercises, ordered into a beginner course, plus a study-plan view
-- [ ] Progress and mistake history in IndexedDB, local only
+  - [x] Lesson format: Markdown with TOML front matter, and `python` code
+        blocks as runnable snippets. A snippet runs with no findings at all,
+        or names the card it shows on purpose with `mistake=CARD-ID` (D31).
+  - [x] `curriculum/course.toml` orders lessons and exercises into units, and
+        the loader checks every lesson and exercise appears exactly once
+  - [x] `course.py` (loader) and `check_lesson` in `selfcheck.py`, run by
+        pytest and inside Pyodide
+  - [x] First 5 lessons: printing, variables, input, functions, `if`/`else`.
+        All 18 exercises placed in 6 units.
+  - [ ] App: study-plan view (units, steps, done marks) as the home screen
+  - [ ] App: lesson reader, where **Try it** copies a snippet into the editor
+        and runs it, so a `mistake=` snippet shows its card for real
+  - [ ] Lessons for loops, lists and text, so every unit opens with one
+- [ ] Progress and mistake history in IndexedDB, local only: steps done, and
+      which card each finding showed, with a timestamp
 - [ ] Repetition becomes practice: after the same card N times, quiz the rule
-      (quiz questions are stored on the card)
-- [ ] "Try first" as the default, and hint-ladder state per finding
+      (quiz questions are stored on the card, and the card tests check that
+      each answer is one of the options)
+- [x] "Try first" as the default (done in M3, D29)
+- [ ] Hint-ladder state kept per finding across re-checks and reloads, and a
+      teacher setting to show the fix straight away
 - [ ] Unknown-error log: errors with no card, stored locally. The learner can
       export it deliberately (opt-in).
 - [ ] "Report this explanation" (local, exportable)
 - [ ] Grow the card library towards ~100, ranked by the error log
+- [ ] M3 follow-ups: say on screen how to leave the editor with the keyboard
+      (Escape, then Tab), and measure the budgets on a real Chromebook
 - [ ] Deploy to Cloudflare Pages and get the first real learners
 
 **Gate to Phase 2:** real learners are using it, and the error log shows which

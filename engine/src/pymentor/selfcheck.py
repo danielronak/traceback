@@ -17,6 +17,7 @@ from .facts import Finding, Severity
 
 if TYPE_CHECKING:
     from .cards import Card, Example
+    from .course import Lesson
     from .engine import Engine
 
 
@@ -84,4 +85,24 @@ def check_exercise(engine: Engine, exercise: Exercise) -> list[str]:
     elif not started.findings or started.findings[0].card is None:
         first = started.findings[0] if started.findings else None
         problems.append(f"{exercise.id}: the starter's first finding has no card: {label(first)}")
+    return problems
+
+
+def check_lesson(engine: Engine, lesson: Lesson) -> list[str]:
+    """Snippets run cleanly, or show exactly the mistake they say they show."""
+    problems = []
+    for snippet in lesson.snippets:
+        where = f"{lesson.id} (line {snippet.line})"
+        report = engine.run(snippet.source, list(snippet.inputs))
+        first = report.findings[0] if report.findings else None
+        if snippet.mistake is None:
+            if report.findings:
+                # Learners copy what lessons show, so a snippet must be exemplary.
+                problems.append(
+                    f"{where}: snippet has findings {[label(f) for f in report.findings]}"
+                )
+        elif snippet.mistake not in {c.id for c in engine.cards}:
+            problems.append(f"{where}: no card '{snippet.mistake}'")
+        elif first is None or first.card is None or first.card.id != snippet.mistake:
+            problems.append(f"{where}: snippet should show {snippet.mistake}, got {label(first)}")
     return problems
