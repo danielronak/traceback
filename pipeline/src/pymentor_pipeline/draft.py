@@ -110,7 +110,10 @@ def draft(
     tally: Counter[str] = Counter()
     started = time.monotonic()
     todo = [e for e in read_jsonl(data / f"examples-{split}.jsonl") if _key(e) not in done]
-    for example in balanced(todo)[:limit]:
+    # `limit` is the total wanted for this split, so re-running the same command
+    # resumes rather than drafting another `limit` on top.
+    budget = None if limit is None else max(0, limit - len(done))
+    for example in balanced(todo)[:budget]:
         item = _item(cases[example["case"]], example)
         text = teacher(system, example["prompt"])
         reasons = judge(text, item)

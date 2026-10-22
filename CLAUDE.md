@@ -93,7 +93,8 @@ npx playwright test            # end-to-end, builds first; set PLAYWRIGHT_CHROMI
 ```
 
 CI (`.github/workflows/ci.yml`) runs all of the above, with the engine and the
-pipeline on Python 3.13 and 3.14, and training on 3.14 with CPU-only PyTorch. Run the relevant ones locally before every commit.
+pipeline on Python 3.13 and 3.14, training on 3.14 with CPU-only PyTorch, and all
+three on Windows too. Run the relevant ones locally before every commit.
 
 ## App conventions
 
