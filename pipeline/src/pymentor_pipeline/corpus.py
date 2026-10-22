@@ -56,7 +56,12 @@ def load_curriculum(root: Path) -> list[Seed]:
         for number, snippet in enumerate(lesson.snippets, start=1):
             if snippet.broken is None:
                 seeds.append(
-                    Seed(f"lesson:{lesson.id}#{number}", snippet.code, snippet.inputs, origin=lesson.origin)
+                    Seed(
+                        f"lesson:{lesson.id}#{number}",
+                        snippet.code,
+                        snippet.inputs,
+                        origin=lesson.origin,
+                    )
                 )
     return seeds
 
@@ -64,7 +69,9 @@ def load_curriculum(root: Path) -> list[Seed]:
 def load_seeds(repo: Path) -> list[Seed]:
     """Every seed, in a stable order."""
     repo = Path(repo)
-    return load_programs(repo / "pipeline" / "corpus" / "programs") + load_curriculum(repo / "curriculum")
+    return load_programs(repo / "pipeline" / "corpus" / "programs") + load_curriculum(
+        repo / "curriculum"
+    )
 
 
 def expected_tests(seed: Seed, step_limit: int = 200_000) -> tuple[ExerciseTest, ...]:

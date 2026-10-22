@@ -31,7 +31,10 @@ def test_seed_is_clean_and_deterministic(seed):
     # Run twice: a seed's output must not depend on chance or the clock.
     for test in exercise.tests:
         if test.output is not None:
-            assert execute(seed.source, list(test.inputs)).printed == execute(seed.source, list(test.inputs)).printed
+            assert (
+                execute(seed.source, list(test.inputs)).printed
+                == execute(seed.source, list(test.inputs)).printed
+            )
 
 
 @pytest.mark.parametrize("seed", [s for s in SEEDS if not s.tests], ids=lambda s: s.id)
