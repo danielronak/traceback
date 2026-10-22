@@ -47,9 +47,64 @@ EXPECTED = {
 }
 
 
-def first_card(source):
-    expected_output = ENGINE.run(PROGRAM).stdout
-    exercise = Exercise("t", "T", "", "", PROGRAM, (ExerciseTest(output=expected_output),))
+# Mutators that need a shape PROGRAM doesn't have get a program of their own.
+SHOP = """prices = {"tea": 2, "cake": 3}
+basket = ["tea", "cake"]
+
+
+def line_cost(item, count):
+    cost = prices[item] * count
+    return cost
+
+
+total = 0
+for item in basket:
+    total = total + line_cost(item, 2)
+basket.sort()
+print("Total:", total)
+print(f"Items: {len(basket)}")
+print(prices["cake"])
+"""
+COUNTDOWN = """count = 3
+while count > 0:
+    print(count)
+    count -= 1
+word = "go"
+print(word.upper())
+for i in range(2):
+    print(i)
+"""
+OWN_PROGRAM = {
+    "drop_comma": (SHOP, "missing-comma"),
+    "half_dedent": (SHOP, "unindent-mismatch"),
+    "tab_indent": (SHOP, "tabs-and-spaces"),
+    "reverse_assignment": (SHOP, "assign-to-non-name"),
+    "square_bracket_call": (SHOP, "brackets-for-call"),
+    "drop_argument": (SHOP, "missing-argument"),
+    "extra_argument": (SHOP, "too-many-arguments"),
+    "drop_return": (SHOP, "none-in-calculation"),
+    "assign_inplace_result": (SHOP + "basket.append('jam')\n", "none-from-inplace-method"),
+    "misspell_key": (SHOP, "key-missing"),
+    "swap_lines": (SHOP, "used-before-assignment"),
+    "concatenate_number": (SHOP, "str-plus-int"),
+    "python2_print": (SHOP, "print-statement"),
+    "drop_conversion": ("# inputs: 4\nn = int(input())\nprint(n + 1)\n", "input-is-string"),
+    "compare_flip": (COUNTDOWN, "wrong-output"),
+    "drop_increment": (COUNTDOWN, "loop-condition-unchanged"),
+    "misspell_method": (COUNTDOWN, "attribute-typo"),
+    "for_over_number": (COUNTDOWN, "int-not-iterable"),
+    "def_without_brackets": (
+        "def greet():\n    print('hi')\n\n\ngreet()\n",
+        "def-missing-brackets",
+    ),
+}
+
+
+def first_card(source, program=PROGRAM):
+    inputs = ["4"] if "input(" in program else []
+    expected_output = ENGINE.run(program, inputs).stdout
+    test = ExerciseTest(inputs=tuple(inputs), output=expected_output)
+    exercise = Exercise("t", "T", "", "", program, (test,))
     findings = ENGINE.run_exercise(exercise, source).findings
     return findings[0].card.id if findings and findings[0].card else None
 
@@ -61,10 +116,16 @@ def test_mutator_produces_the_mistake_its_card_teaches(kind, card):
     assert card in {first_card(m.source) for m in mutations}
 
 
-def test_every_mutator_is_covered_or_known_not_to_apply():
-    # These need shapes this program doesn't have; the corpus covers them.
-    elsewhere = {"python2_print", "def_without_brackets", "drop_conversion", "compare_flip"}
-    assert set(MUTATORS) == set(EXPECTED) | elsewhere
+@pytest.mark.parametrize(("kind", "case"), OWN_PROGRAM.items())
+def test_mutator_on_its_own_program(kind, case):
+    program, card = case
+    mutations = [m for m in mutate(program, per_kind=50) if m.kind == kind]
+    assert mutations, f"{kind} found nowhere to apply"
+    assert card in {first_card(m.source, program) for m in mutations}
+
+
+def test_every_mutator_is_covered():
+    assert set(MUTATORS) <= set(EXPECTED) | set(OWN_PROGRAM)
 
 
 def test_mutations_are_deterministic_and_capped():

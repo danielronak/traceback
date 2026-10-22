@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 import io
+import itertools
 import keyword
 import random
 import re
@@ -502,3 +503,339 @@ def drop_f_prefix(program: Program) -> Iterator[Mutation]:
                     program.replace(node.lineno, node.col_offset, node.col_offset + 1, ""),
                     node.lineno,
                 )
+
+
+# --- more syntax mistakes ---------------------------------------------------------
+
+
+@mutator
+def drop_comma(program: Program) -> Iterator[Mutation]:
+    """[1, 2, 3]  ->  [1 2, 3];  print("Hi", name)  ->  print("Hi" name)"""
+    for node in ast.walk(program.tree):
+        if isinstance(node, ast.List | ast.Tuple | ast.Set):
+            items = node.elts
+        elif isinstance(node, ast.Call) and not node.keywords:
+            items = node.args
+        else:
+            continue
+        for left, right in itertools.pairwise(items):
+            if left.end_lineno != right.lineno:
+                continue
+            line = program.lines[left.end_lineno - 1]
+            gap = line[left.end_col_offset : right.col_offset]
+            if gap.strip() == ",":
+                comma = left.end_col_offset + gap.index(",")
+                yield Mutation(
+                    "drop_comma", program.replace(right.lineno, comma, comma + 1, ""), right.lineno
+                )
+
+
+def _later_statements(program: Program) -> Iterator[ast.stmt]:
+    """Statements that aren't the first in their block, so re-indenting one
+    doesn't change which block the block header sees."""
+    for node in ast.walk(program.tree):
+        for field in ("body", "orelse", "finalbody"):
+            block = getattr(node, field, None)
+            if isinstance(block, list) and not isinstance(node, ast.Module):
+                yield from (s for s in block[1:] if isinstance(s, ast.stmt))
+
+
+@mutator
+def half_dedent(program: Program) -> Iterator[Mutation]:
+    """A line inside a block indented by 2 spaces instead of 4."""
+    for statement in _later_statements(program):
+        line = statement.lineno
+        text = program.lines[line - 1]
+        if statement.col_offset >= 4 and text.startswith(" " * statement.col_offset):
+            yield Mutation("half_dedent", program.with_line(line, text[2:]), line)
+
+
+@mutator
+def tab_indent(program: Program) -> Iterator[Mutation]:
+    """A line inside a block indented with a tab, the others with spaces."""
+    for statement in _later_statements(program):
+        line = statement.lineno
+        text = program.lines[line - 1]
+        if statement.col_offset == 4 and text.startswith("    "):
+            yield Mutation("tab_indent", program.with_line(line, "\t" + text[4:]), line)
+
+
+@mutator
+def reverse_assignment(program: Program) -> Iterator[Mutation]:
+    """total = 0  ->  0 = total, the way it's written in maths."""
+    for node in ast.walk(program.tree):
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.lineno == node.end_lineno
+            and isinstance(node.value, ast.Constant | ast.BinOp)
+        ):
+            line = node.lineno
+            indent = program.lines[line - 1][: node.col_offset]
+            text = f"{indent}{program.segment(node.value)} = {node.targets[0].id}"
+            yield Mutation("reverse_assignment", program.with_line(line, text), line)
+
+
+# --- more runtime mistakes --------------------------------------------------------
+
+
+@mutator
+def square_bracket_call(program: Program) -> Iterator[Mutation]:
+    """len(items)  ->  len[items]"""
+    for node in ast.walk(program.tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and len(node.args) == 1
+            and not node.keywords
+            and node.lineno == node.end_lineno
+        ):
+            arg = program.segment(node.args[0])
+            text = f"{node.func.id}[{arg}]"
+            yield Mutation(
+                "square_bracket_call",
+                program.replace(node.lineno, node.col_offset, node.end_col_offset, text),
+                node.lineno,
+            )
+
+
+@mutator
+def for_over_number(program: Program) -> Iterator[Mutation]:
+    """for i in range(n):  ->  for i in n:"""
+    for node in ast.walk(program.tree):
+        call = getattr(node, "iter", None)
+        if (
+            isinstance(node, ast.For)
+            and isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Name)
+            and call.func.id == "range"
+            and len(call.args) == 1
+            and call.lineno == call.end_lineno
+        ):
+            stop = program.segment(call.args[0])
+            yield Mutation(
+                "for_over_number",
+                program.replace(call.lineno, call.col_offset, call.end_col_offset, stop),
+                call.lineno,
+            )
+
+
+def _user_calls(program: Program) -> Iterator[ast.Call]:
+    defined = {n.name for n in ast.walk(program.tree) if isinstance(n, ast.FunctionDef)}
+    for node in ast.walk(program.tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in defined
+            and node.args
+            and not node.keywords
+            and node.lineno == node.end_lineno
+        ):
+            yield node
+
+
+@mutator
+def drop_argument(program: Program) -> Iterator[Mutation]:
+    """area(3, 4)  ->  area(3), calling your own function with too few values."""
+    for call in _user_calls(program):
+        args = ", ".join(program.segment(a) for a in call.args[:-1])
+        text = f"{call.func.id}({args})"
+        yield Mutation(
+            "drop_argument",
+            program.replace(call.lineno, call.col_offset, call.end_col_offset, text),
+            call.lineno,
+        )
+
+
+@mutator
+def extra_argument(program: Program) -> Iterator[Mutation]:
+    """double(4)  ->  double(4, 2), calling your own function with too many."""
+    for call in _user_calls(program):
+        args = ", ".join([*(program.segment(a) for a in call.args), "2"])
+        text = f"{call.func.id}({args})"
+        yield Mutation(
+            "extra_argument",
+            program.replace(call.lineno, call.col_offset, call.end_col_offset, text),
+            call.lineno,
+        )
+
+
+@mutator
+def drop_return(program: Program) -> Iterator[Mutation]:
+    """A function works out its answer, then forgets the `return answer` line."""
+    for node in ast.walk(program.tree):
+        if isinstance(node, ast.FunctionDef) and len(node.body) >= 2:
+            last = node.body[-1]
+            if (
+                isinstance(last, ast.Return)
+                and isinstance(last.value, ast.Name)
+                and last.lineno == last.end_lineno
+            ):
+                yield Mutation("drop_return", program.without_line(last.lineno), last.lineno)
+
+
+INPLACE_METHODS = ("sort", "append", "reverse", "extend", "insert", "remove")
+
+
+@mutator
+def assign_inplace_result(program: Program) -> Iterator[Mutation]:
+    """items.sort()  ->  items = items.sort()"""
+    for node in ast.walk(program.tree):
+        if (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Attribute)
+            and node.value.func.attr in INPLACE_METHODS
+            and isinstance(node.value.func.value, ast.Name)
+            and node.lineno == node.end_lineno
+        ):
+            line = node.lineno
+            name = node.value.func.value.id
+            yield Mutation(
+                "assign_inplace_result",
+                program.replace(line, node.col_offset, node.col_offset, f"{name} = "),
+                line,
+            )
+
+
+@mutator
+def misspell_key(program: Program) -> Iterator[Mutation]:
+    """prices["tea"]  ->  prices["tae"]"""
+    for node in ast.walk(program.tree):
+        if (
+            isinstance(node, ast.Subscript)
+            and isinstance(node.ctx, ast.Load)
+            and isinstance(node.slice, ast.Constant)
+            and isinstance(node.slice.value, str)
+            and len(node.slice.value) >= 3
+            and node.slice.lineno == node.slice.end_lineno
+        ):
+            key = node.slice
+            quote = program.lines[key.lineno - 1][key.col_offset]
+            wrong = typo(key.value, _rng(program, "key", key.lineno, key.col_offset))
+            yield Mutation(
+                "misspell_key",
+                program.replace(
+                    key.lineno, key.col_offset, key.end_col_offset, f"{quote}{wrong}{quote}"
+                ),
+                key.lineno,
+            )
+
+
+@mutator
+def misspell_method(program: Program) -> Iterator[Mutation]:
+    """word.upper()  ->  word.uper()"""
+    for node in ast.walk(program.tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and len(node.func.attr) >= 4
+            and node.func.end_lineno == node.func.lineno
+        ):
+            attr = node.func.attr
+            end = node.func.end_col_offset
+            rng = _rng(program, "method", node.lineno, end)
+            # Method names are lower case, so a capital isn't the typo here.
+            wrong = next((w for _ in range(8) if (w := typo(attr, rng).lower()) != attr), attr)
+            if wrong != attr:
+                yield Mutation(
+                    "misspell_method",
+                    program.replace(node.func.end_lineno, end - len(attr), end, wrong),
+                    node.func.lineno,
+                )
+
+
+@mutator
+def drop_increment(program: Program) -> Iterator[Mutation]:
+    """Forget the `count += 1` that makes a `while` loop finish."""
+    for node in ast.walk(program.tree):
+        if not isinstance(node, ast.While) or len(node.body) < 2:
+            continue
+        tested = {n.id for n in ast.walk(node.test) if isinstance(n, ast.Name)}
+        for statement in node.body:
+            if (
+                isinstance(statement, ast.AugAssign)
+                and isinstance(statement.target, ast.Name)
+                and statement.target.id in tested
+            ):
+                line = statement.lineno
+                yield Mutation("drop_increment", program.without_line(line), line)
+
+
+@mutator
+def swap_lines(program: Program) -> Iterator[Mutation]:
+    """Use a variable on the line before the one that creates it."""
+    for node in ast.walk(program.tree):
+        block = getattr(node, "body", None)
+        if not isinstance(block, list):
+            continue
+        for first, second in itertools.pairwise(block):
+            if not (
+                isinstance(first, ast.Assign)
+                and first.lineno == first.end_lineno
+                and second.lineno == second.end_lineno == first.lineno + 1
+                and not isinstance(second, ast.FunctionDef | ast.ClassDef)
+            ):
+                continue
+            made = {t.id for t in first.targets if isinstance(t, ast.Name)}
+            used = {n.id for n in ast.walk(second) if isinstance(n, ast.Name)}
+            if made & used:
+                lines = list(program.lines)
+                a, b = first.lineno - 1, second.lineno - 1
+                lines[a], lines[b] = lines[b], lines[a]
+                yield Mutation("swap_lines", "\n".join(lines) + "\n", first.lineno)
+
+
+@mutator
+def concatenate_number(program: Program) -> Iterator[Mutation]:
+    """print("Total:", total)  ->  print("Total: " + total);
+    f"Total: {total}"  ->  "Total: " + total"""
+    for node in ast.walk(program.tree):
+        if getattr(node, "lineno", None) != getattr(node, "end_lineno", 0):
+            continue
+        text = _concatenated(program, node)
+        if text is not None:
+            yield Mutation(
+                "concatenate_number",
+                program.replace(node.lineno, node.col_offset, node.end_col_offset, text),
+                node.lineno,
+            )
+
+
+def _concatenated(program: Program, node: ast.AST) -> str | None:
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "print"
+        and len(node.args) == 2
+        and not node.keywords
+        and _is_text(node.args[0])
+        and not _is_text(node.args[1])
+    ):
+        return f"print({_quote(node.args[0].value + ' ')} + {_operand(program, node.args[1])})"
+    if not isinstance(node, ast.JoinedStr):
+        return None
+    parts = []
+    for value in node.values:
+        if _is_text(value):
+            parts.append(_quote(value.value))
+        elif value.format_spec is None and value.conversion == -1:
+            parts.append(_operand(program, value.value))
+        else:
+            return None  # `{x:.2f}` and `{x!r}` have no plain `+` equivalent
+    return " + ".join(parts) if len(parts) >= 2 else None
+
+
+def _is_text(node: ast.AST) -> bool:
+    return isinstance(node, ast.Constant) and isinstance(node.value, str)
+
+
+def _quote(text: str) -> str:
+    return f'"{text}"' if '"' not in text and "\\" not in text and "\n" not in text else repr(text)
+
+
+def _operand(program: Program, node: ast.expr) -> str:
+    text = program.segment(node)
+    simple = ast.Name | ast.Attribute | ast.Call | ast.Subscript | ast.Constant
+    return text if isinstance(node, simple) else f"({text})"
