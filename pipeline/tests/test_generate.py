@@ -9,7 +9,7 @@ import pytest
 from pymentor import grounding, prompt
 from pymentor_pipeline.corpus import Seed, load_seeds
 from pymentor_pipeline.generate import (
-    _TIMED_OUT,
+    TIMED_OUT,
     Job,
     analyse,
     generate,
@@ -59,7 +59,7 @@ def _slow(job):
 def test_a_job_that_hangs_is_killed_and_the_rest_still_finish():
     jobs = [Job(i, "s", "hang" if i == 1 else "ok", 1, "", ()) for i in range(4)]
     results = {job.index: result for job, result in run_jobs(jobs, _slow, timeout=1)}
-    assert results[1] is _TIMED_OUT
+    assert results[1] is TIMED_OUT
     assert {i: r for i, r in results.items() if i != 1} == {0: 0, 2: 2, 3: 3}
 
 

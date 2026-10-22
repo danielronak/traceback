@@ -41,6 +41,7 @@ DEFAULT_PER_KIND = 12
 DEFAULT_VARIANTS = 2  # renamed copies of each seed (augment.py)
 JOB_TIMEOUT = 20.0  # seconds; the sandbox's own limits normally stop a program long before
 MEMORY_LIMIT = 1 << 30  # bytes per worker
+MAX_DEATHS_IN_A_ROW = 20  # then something is wrong with the workers, not the jobs
 
 
 @dataclass(frozen=True)
@@ -71,7 +72,7 @@ def case_id(seed_id: str, source: str) -> str:
 def make_jobs(seeds: Iterable[Seed], per_kind: int) -> list[Job]:
     jobs: list[Job] = []
     for seed in seeds:
-        tests = tuple(_test_to_dict(t) for t in expected_tests(seed))
+        tests = tuple(test_to_dict(t) for t in expected_tests(seed))
         for mutation in mutate(seed.source, per_kind=per_kind, seed=seed.id):
             jobs.append(
                 Job(len(jobs), seed.id, mutation.kind, mutation.line, mutation.source, tests)
@@ -113,7 +114,7 @@ def generate(
     results: dict[int, dict[str, Any] | None] = {}
     timed_out = 0
     for done, (job, result) in enumerate(run_jobs(jobs, analyse, workers=workers), start=1):
-        if result is _TIMED_OUT:
+        if result is TIMED_OUT:
             timed_out += 1
             result = None
         results[job.index] = result
@@ -195,7 +196,7 @@ def generate(
 
 # --- Worker processes ------------------------------------------------------
 
-_TIMED_OUT = object()
+TIMED_OUT = object()
 
 
 def run_jobs(
@@ -208,7 +209,7 @@ def run_jobs(
     """Run ``fn`` on each job in a pool of processes, killing any that overrun.
 
     Yields ``(job, result)`` as jobs finish, in no particular order. A job that
-    times out or kills its worker yields ``_TIMED_OUT`` and gets a fresh worker.
+    times out or kills its worker yields ``TIMED_OUT`` and gets a fresh worker.
     ``fn`` must be a module-level function, since workers are spawned.
     """
     context = multiprocessing.get_context("spawn")
@@ -216,6 +217,7 @@ def run_jobs(
     pending = deque(jobs)
     idle = [_Worker(context, fn) for _ in range(min(count, len(pending)) or 1)]
     busy: dict[Connection, _Worker] = {}
+    deaths = 0
     try:
         while pending or busy:
             while pending and idle:
@@ -229,9 +231,16 @@ def run_jobs(
                 try:
                     result = conn.recv()
                 except (EOFError, OSError):  # the worker died mid-job
-                    result = _TIMED_OUT
+                    result = TIMED_OUT
                     worker.stop()
+                    deaths += 1
+                    if deaths > MAX_DEATHS_IN_A_ROW:
+                        raise RuntimeError(
+                            "workers keep dying; run from a file or module, not stdin"
+                        ) from None
                     worker = _Worker(context, fn)
+                else:
+                    deaths = 0
                 yield job, result
                 idle.append(worker)
             now = time.monotonic()
@@ -241,7 +250,7 @@ def run_jobs(
                     job = worker.job
                     worker.stop()
                     idle.append(_Worker(context, fn))
-                    yield job, _TIMED_OUT
+                    yield job, TIMED_OUT
     finally:
         for worker in [*idle, *busy.values()]:
             worker.stop()
@@ -302,7 +311,7 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
         return [json.loads(line) for line in file if line.strip()]
 
 
-def _test_to_dict(test: ExerciseTest) -> dict[str, Any]:
+def test_to_dict(test: ExerciseTest) -> dict[str, Any]:
     """A test as an exercise file writes it, so ``parse_tests`` reads it back."""
     if test.call is not None:
         return {"call": test.call, "expect": test.expect_text, "inputs": list(test.inputs)}

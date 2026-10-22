@@ -1,0 +1,280 @@
+case,task,card,error,code,output,clarity_1_to_5,hint_quality_1_to_5,accurate_y_n,notes
+card-assign-in-condition-1,explain,assign-in-condition,SyntaxError line 2: invalid syntax. Maybe you meant '==' or ':=' instead of '='?,"1 x = 5
+2 if x = 5:
+3     print(""five"")","`=` used where `==` was meant on line 2
+
+`=` stores a value in a variable. `==` asks whether two values are equal. A condition needs the question, so it uses `==`.",,,,
+card-else-without-if-1,explain,else-without-if,SyntaxError line 5: invalid syntax,"2 if x > 0:
+3     print('positive')
+4 print('checked')
+5 else:
+6     print('not positive')","This `else` has no `if` to belong to
+
+`else` and `elif` continue an `if`, so they must come straight after its block, lined up with the `if`.",,,,
+card-keyword-typo-2,explain,keyword-typo,SyntaxError line 1: invalid syntax,"1 ddef greet():
+2     print('hi')","`ddef` should probably be `def`
+
+Python's keywords, like `if`, `while`, `for`, `def` and `return`, must be spelled exactly, in lowercase.",,,,
+card-name-undefined-1,explain,name-undefined,NameError line 1: name 'x' is not defined,1 y = x + 1,"`x` is not defined
+
+Python only knows the names you've created (with `=`, `def`, `for` or `import`) and its own built-in names.",,,,
+card-str-plus-int-1,explain,str-plus-int,"TypeError line 2: can only concatenate str (not ""int"") to str","1 age = 15
+2 print(""Age: "" + age)","`+` can't join text with a value of type `int` (line 2)
+
+`+` joins text to text, or adds numbers to numbers. To put a number into text, convert it with `str()`, or use an f-string: `f""Age: {age}""`.",,,,
+mutation-0842bcce35c4,explain,none-from-inplace-method,TypeError line 7: object of type 'NoneType' has no len(),"4     clean.append(name.strip().lower())
+5 clean = clean.sort()
+6 print(clean)
+7 for i in range(len(clean)):
+8     print(i, clean[i].upper())
+9 print(""First:"", clean[0])","`clean` is `None` because `.sort()` returns `None`
+
+Methods such as `.sort()`, `.append()` and `.reverse()` change the object itself and give back `None`. Call them on their own line, without `=`.",,,,
+mutation-25169527665f,explain,naming-variable,naming-variable line 3: Variable name 'Total' is not snake_case,"1 # inputs: 4096
+2 number = input(""A number: "")
+3 Total = 0
+4 for digit in number:
+5     Total += int(digit)
+6 print(""The digits add up to"", Total)","Variable names are written in snake_case: `total`
+
+Python variable names use lowercase words joined by underscores (snake_case), such as `total_score`. Names in ALL_CAPS are kept for constants.",,,,
+mutation-4e9cb552ad9e,explain,indent-expected,IndentationError line 8: expected an indented block after function definition on line 7,"5         self.read = 0
+6 
+7     def read_pages(self, count):
+8     self.read += count
+9         if self.read > self.pages:
+10             self.read = self.pages
+11 ","Line 8 should be indented inside the `def` block
+
+After a line that ends with a colon, the lines that belong to that block must be indented, usually by 4 spaces.",,,,
+mutation-703e31716509,explain,missing-argument,TypeError line 7: is_palindrome() missing 1 required positional argument: 'word',"4 
+5 
+6 for word in [""Racecar"", ""Python"", ""Level""]:
+7     print(word, is_palindrome())","`is_palindrome()` needs a value for 'word'
+
+When you call a function, give it one value for each parameter in its `def` line, unless that parameter has a default.",,,,
+mutation-99da10b745df,explain,name-typo,NameError line 3: name 'full_anme' is not defined. Did you mean: 'full_name'?,"1 # inputs: Ada Lovelace
+2 full_name = input(""Your full name: "")
+3 parts = full_anme.split()
+4 initials = """"
+5 for part in parts:
+6     initials += part[0].upper()","`full_anme` is not defined. Did you mean `full_name`?
+
+Python only knows the names you've created. A name spelled even slightly differently is a completely new, unknown name.",,,,
+mutation-b53618dbe8d1,explain,assign-to-non-name,SyntaxError line 1: cannot assign to literal here. Maybe you meant '==' instead of '='?,"1 3 = count
+2 while count > 0:
+3     print(count)
+4     count -= 1","Only a variable name can go on the left of `=`
+
+`=` stores the value on its right under the name on its left, so the left side must be a variable name, like `total = 5`.",,,,
+mutation-db68d1dc8224,explain,tabs-and-spaces,TabError line 4: inconsistent use of tabs and spaces in indentation,"1 count = 3
+2 while count > 0:
+3     print(count)
+4 	count -= 1
+5 print(""Lift off!"")","Tabs and spaces are mixed in the indentation on line 4
+
+Indent with spaces only, 4 per level. Don't mix tabs and spaces in one file.",,,,
+card-assign-in-condition-1,hint_level_1,assign-in-condition,SyntaxError line 2: invalid syntax. Maybe you meant '==' or ':=' instead of '='?,"1 x = 5
+2 if x = 5:
+3     print(""five"")","Look at the `=` on line 2. Is it storing a value, or comparing two?",,,,
+card-else-without-if-1,hint_level_1,else-without-if,SyntaxError line 5: invalid syntax,"2 if x > 0:
+3     print('positive')
+4 print('checked')
+5 else:
+6     print('not positive')",Which `if` is this `else` meant to belong to?,,,,
+card-keyword-typo-2,hint_level_1,keyword-typo,SyntaxError line 1: invalid syntax,"1 ddef greet():
+2     print('hi')",Look at the first word on line 1.,,,,
+card-name-undefined-1,hint_level_1,name-undefined,NameError line 1: name 'x' is not defined,1 y = x + 1,Where did you expect `x` to be created?,,,,
+card-str-plus-int-1,hint_level_1,str-plus-int,"TypeError line 2: can only concatenate str (not ""int"") to str","1 age = 15
+2 print(""Age: "" + age)",What type of value is on each side of the `+` on line 2?,,,,
+mutation-0842bcce35c4,hint_level_1,none-from-inplace-method,TypeError line 7: object of type 'NoneType' has no len(),"4     clean.append(name.strip().lower())
+5 clean = clean.sort()
+6 print(clean)
+7 for i in range(len(clean)):
+8     print(i, clean[i].upper())
+9 print(""First:"", clean[0])",What value did `clean` get on line 5?,,,,
+mutation-25169527665f,hint_level_1,naming-variable,naming-variable line 3: Variable name 'Total' is not snake_case,"1 # inputs: 4096
+2 number = input(""A number: "")
+3 Total = 0
+4 for digit in number:
+5     Total += int(digit)
+6 print(""The digits add up to"", Total)",Look at how `Total` is written on line 3.,,,,
+mutation-4e9cb552ad9e,hint_level_1,indent-expected,IndentationError line 8: expected an indented block after function definition on line 7,"5         self.read = 0
+6 
+7     def read_pages(self, count):
+8     self.read += count
+9         if self.read > self.pages:
+10             self.read = self.pages
+11 ","Line 7 ends with a colon, so Python expects indented lines to follow.",,,,
+mutation-703e31716509,hint_level_1,missing-argument,TypeError line 7: is_palindrome() missing 1 required positional argument: 'word',"4 
+5 
+6 for word in [""Racecar"", ""Python"", ""Level""]:
+7     print(word, is_palindrome())",Look at the `def` line of `is_palindrome`. How many parameters does it have?,,,,
+mutation-99da10b745df,hint_level_1,name-typo,NameError line 3: name 'full_anme' is not defined. Did you mean: 'full_name'?,"1 # inputs: Ada Lovelace
+2 full_name = input(""Your full name: "")
+3 parts = full_anme.split()
+4 initials = """"
+5 for part in parts:
+6     initials += part[0].upper()",Look closely at how `full_anme` is spelled on line 3.,,,,
+mutation-b53618dbe8d1,hint_level_1,assign-to-non-name,SyntaxError line 1: cannot assign to literal here. Maybe you meant '==' instead of '='?,"1 3 = count
+2 while count > 0:
+3     print(count)
+4     count -= 1",What is on the left of the `=` on line 1?,,,,
+mutation-db68d1dc8224,hint_level_1,tabs-and-spaces,TabError line 4: inconsistent use of tabs and spaces in indentation,"1 count = 3
+2 while count > 0:
+3     print(count)
+4 	count -= 1
+5 print(""Lift off!"")","The indentation on line 4 may look fine, but it's made of different characters from the lines around it.",,,,
+card-assign-in-condition-1,hint_level_2,assign-in-condition,SyntaxError line 2: invalid syntax. Maybe you meant '==' or ':=' instead of '='?,"1 x = 5
+2 if x = 5:
+3     print(""five"")","Python has one symbol for ""store this"" and a different one for ""is this equal to?"".",,,,
+card-else-without-if-1,hint_level_2,else-without-if,SyntaxError line 5: invalid syntax,"2 if x > 0:
+3     print('positive')
+4 print('checked')
+5 else:
+6     print('not positive')",Is every line between that `if` and line 5 indented inside the `if`?,,,,
+card-keyword-typo-2,hint_level_2,keyword-typo,SyntaxError line 1: invalid syntax,"1 ddef greet():
+2     print('hi')","Is it one of Python's keywords, spelled slightly wrong or with a capital letter?",,,,
+card-name-undefined-1,hint_level_2,name-undefined,NameError line 1: name 'x' is not defined,1 y = x + 1,"Check the spelling, and check that the line creating it runs before line 1.",,,,
+card-str-plus-int-1,hint_level_2,str-plus-int,"TypeError line 2: can only concatenate str (not ""int"") to str","1 age = 15
+2 print(""Age: "" + age)",The left side is text (type `str`) and the right side is of type `int`.,,,,
+mutation-0842bcce35c4,hint_level_2,none-from-inplace-method,TypeError line 7: object of type 'NoneType' has no len(),"4     clean.append(name.strip().lower())
+5 clean = clean.sort()
+6 print(clean)
+7 for i in range(len(clean)):
+8     print(i, clean[i].upper())
+9 print(""First:"", clean[0])",`.sort()` changes the object it's called on and returns `None`.,,,,
+mutation-25169527665f,hint_level_2,naming-variable,naming-variable line 3: Variable name 'Total' is not snake_case,"1 # inputs: 4096
+2 number = input(""A number: "")
+3 Total = 0
+4 for digit in number:
+5     Total += int(digit)
+6 print(""The digits add up to"", Total)","Python variable names are all lowercase, with underscores between words.",,,,
+mutation-4e9cb552ad9e,hint_level_2,indent-expected,IndentationError line 8: expected an indented block after function definition on line 7,"5         self.read = 0
+6 
+7     def read_pages(self, count):
+8     self.read += count
+9         if self.read > self.pages:
+10             self.read = self.pages
+11 ",Which lines should belong to the `def` on line 7? Those lines need to be indented.,,,,
+mutation-703e31716509,hint_level_2,missing-argument,TypeError line 7: is_palindrome() missing 1 required positional argument: 'word',"4 
+5 
+6 for word in [""Racecar"", ""Python"", ""Level""]:
+7     print(word, is_palindrome())",Now count the values given to `is_palindrome()` on line 7.,,,,
+mutation-99da10b745df,hint_level_2,name-typo,NameError line 3: name 'full_anme' is not defined. Did you mean: 'full_name'?,"1 # inputs: Ada Lovelace
+2 full_name = input(""Your full name: "")
+3 parts = full_anme.split()
+4 initials = """"
+5 for part in parts:
+6     initials += part[0].upper()",Compare it with the names you created earlier. Is one nearly the same?,,,,
+mutation-b53618dbe8d1,hint_level_2,assign-to-non-name,SyntaxError line 1: cannot assign to literal here. Maybe you meant '==' instead of '='?,"1 3 = count
+2 while count > 0:
+3     print(count)
+4     count -= 1",The name you're storing into goes on the left: `name = value`.,,,,
+mutation-db68d1dc8224,hint_level_2,tabs-and-spaces,TabError line 4: inconsistent use of tabs and spaces in indentation,"1 count = 3
+2 while count > 0:
+3     print(count)
+4 	count -= 1
+5 print(""Lift off!"")",Some lines are indented with a tab and others with spaces.,,,,
+card-assign-in-condition-1,hint_level_3,assign-in-condition,SyntaxError line 2: invalid syntax. Maybe you meant '==' or ':=' instead of '='?,"1 x = 5
+2 if x = 5:
+3     print(""five"")",Use `==` to compare: change `=` to `==` on line 2.,,,,
+card-else-without-if-1,hint_level_3,else-without-if,SyntaxError line 5: invalid syntax,"2 if x > 0:
+3     print('positive')
+4 print('checked')
+5 else:
+6     print('not positive')","Line up `else` with its `if`, and indent the lines between them.",,,,
+card-keyword-typo-2,hint_level_3,keyword-typo,SyntaxError line 1: invalid syntax,"1 ddef greet():
+2     print('hi')",Change `ddef` to `def`.,,,,
+card-name-undefined-1,hint_level_3,name-undefined,NameError line 1: name 'x' is not defined,1 y = x + 1,"Create `x` with a value before line 1, or use the name you meant.",,,,
+card-str-plus-int-1,hint_level_3,str-plus-int,"TypeError line 2: can only concatenate str (not ""int"") to str","1 age = 15
+2 print(""Age: "" + age)","Turn the right side into text with `str(...)`, or use an f-string.",,,,
+mutation-0842bcce35c4,hint_level_3,none-from-inplace-method,TypeError line 7: object of type 'NoneType' has no len(),"4     clean.append(name.strip().lower())
+5 clean = clean.sort()
+6 print(clean)
+7 for i in range(len(clean)):
+8     print(i, clean[i].upper())
+9 print(""First:"", clean[0])","Call `.sort()` on its own line, then keep using the original variable.",,,,
+mutation-25169527665f,hint_level_3,naming-variable,naming-variable line 3: Variable name 'Total' is not snake_case,"1 # inputs: 4096
+2 number = input(""A number: "")
+3 Total = 0
+4 for digit in number:
+5     Total += int(digit)
+6 print(""The digits add up to"", Total)",Rename `Total` to `total`.,,,,
+mutation-4e9cb552ad9e,hint_level_3,indent-expected,IndentationError line 8: expected an indented block after function definition on line 7,"5         self.read = 0
+6 
+7     def read_pages(self, count):
+8     self.read += count
+9         if self.read > self.pages:
+10             self.read = self.pages
+11 ",Indent line 8 by 4 spaces.,,,,
+mutation-703e31716509,hint_level_3,missing-argument,TypeError line 7: is_palindrome() missing 1 required positional argument: 'word',"4 
+5 
+6 for word in [""Racecar"", ""Python"", ""Level""]:
+7     print(word, is_palindrome())",Add a value for 'word' to the call.,,,,
+mutation-99da10b745df,hint_level_3,name-typo,NameError line 3: name 'full_anme' is not defined. Did you mean: 'full_name'?,"1 # inputs: Ada Lovelace
+2 full_name = input(""Your full name: "")
+3 parts = full_anme.split()
+4 initials = """"
+5 for part in parts:
+6     initials += part[0].upper()",Did you mean `full_name`?,,,,
+mutation-b53618dbe8d1,hint_level_3,assign-to-non-name,SyntaxError line 1: cannot assign to literal here. Maybe you meant '==' instead of '='?,"1 3 = count
+2 while count > 0:
+3     print(count)
+4     count -= 1","Swap the two sides, or use `==` if you meant to compare.",,,,
+mutation-db68d1dc8224,hint_level_3,tabs-and-spaces,TabError line 4: inconsistent use of tabs and spaces in indentation,"1 count = 3
+2 while count > 0:
+3     print(count)
+4 	count -= 1
+5 print(""Lift off!"")",Re-indent the file using spaces only.,,,,
+card-assign-in-condition-1,why_followup,assign-in-condition,SyntaxError line 2: invalid syntax. Maybe you meant '==' or ':=' instead of '='?,"1 x = 5
+2 if x = 5:
+3     print(""five"")",Python keeps the two jobs apart so a typo can't silently change a variable when you meant to compare it. In some languages `if x = 5` quietly stores 5 in `x` and counts as true. Python refuses to run it instead.,,,,
+card-else-without-if-1,why_followup,else-without-if,SyntaxError line 5: invalid syntax,"2 if x > 0:
+3     print('positive')
+4 print('checked')
+5 else:
+6     print('not positive')","Python pairs an `else` with the `if` above it at the same indentation. On line 5 there's none: either the `if` is missing, or a line in between (often one that isn't indented) has ended the `if` block.",,,,
+card-keyword-typo-2,why_followup,keyword-typo,SyntaxError line 1: invalid syntax,"1 ddef greet():
+2     print('hi')","Python recognises a keyword only by its exact spelling. `ddef` is just an unknown word to it, so the rest of line 1 stops making sense as a statement.",,,,
+card-name-undefined-1,why_followup,name-undefined,NameError line 1: name 'x' is not defined,1 y = x + 1,"A name has to be created before it's used, so Python can be sure what it refers to. If Python can't find the name anywhere, it stops rather than guess.",,,,
+card-str-plus-int-1,why_followup,str-plus-int,"TypeError line 2: can only concatenate str (not ""int"") to str","1 age = 15
+2 print(""Age: "" + age)","Python won't guess whether `""3"" + 4` should be `""34""` or `7`. Each type decides what `+` means for itself, and text only knows how to join with more text, so mixing them is an error instead of a silent surprise.",,,,
+mutation-0842bcce35c4,why_followup,none-from-inplace-method,TypeError line 7: object of type 'NoneType' has no len(),"4     clean.append(name.strip().lower())
+5 clean = clean.sort()
+6 print(clean)
+7 for i in range(len(clean)):
+8     print(i, clean[i].upper())
+9 print(""First:"", clean[0])","Python makes in-place methods return `None` on purpose, so you can't mistake them for ones that make a new copy. On line 5, `clean` was set to that `None`. To get a new sorted list instead, use `sorted(...)`.",,,,
+mutation-25169527665f,why_followup,naming-variable,naming-variable line 3: Variable name 'Total' is not snake_case,"1 # inputs: 4096
+2 number = input(""A number: "")
+3 Total = 0
+4 for digit in number:
+5     Total += int(digit)
+6 print(""The digits add up to"", Total)","This convention comes from PEP 8, Python's style guide. Your code works either way, but following it lets other Python programmers read your code at a glance: a Capitalised name tells a reader ""this is a class"".",,,,
+mutation-4e9cb552ad9e,why_followup,indent-expected,IndentationError line 8: expected an indented block after function definition on line 7,"5         self.read = 0
+6 
+7     def read_pages(self, count):
+8     self.read += count
+9         if self.read > self.pages:
+10             self.read = self.pages
+11 ","Indentation is how Python knows which lines are inside the `def` on line 7 and which come after it. Without it, Python sees a block with nothing inside, which isn't allowed.",,,,
+mutation-703e31716509,why_followup,missing-argument,TypeError line 7: is_palindrome() missing 1 required positional argument: 'word',"4 
+5 
+6 for word in [""Racecar"", ""Python"", ""Level""]:
+7     print(word, is_palindrome())","Inside the function, 'word' would have no value, and Python won't make one up. It stops at the call so you can see which values are missing.",,,,
+mutation-99da10b745df,why_followup,name-typo,NameError line 3: name 'full_anme' is not defined. Did you mean: 'full_name'?,"1 # inputs: Ada Lovelace
+2 full_name = input(""Your full name: "")
+3 parts = full_anme.split()
+4 initials = """"
+5 for part in parts:
+6     initials += part[0].upper()","Python can't guess what you meant, because a near-miss could just as well be a different variable you forgot to create. Names are also case-sensitive: `total` and `Total` are two different names.",,,,
+mutation-b53618dbe8d1,why_followup,assign-to-non-name,SyntaxError line 1: cannot assign to literal here. Maybe you meant '==' instead of '='?,"1 3 = count
+2 while count > 0:
+3     print(count)
+4     count -= 1","Line 1 has a literal on the left of `=`, and Python can't store a value in that. Either the two sides are the wrong way round, or `==` (comparing) was meant instead of `=` (storing).",,,,
+mutation-db68d1dc8224,why_followup,tabs-and-spaces,TabError line 4: inconsistent use of tabs and spaces in indentation,"1 count = 3
+2 while count > 0:
+3     print(count)
+4 	count -= 1
+5 print(""Lift off!"")","A tab can look like 2, 4 or 8 spaces depending on the editor, so indentation that looks lined up to you can be ambiguous to Python. Rather than guess, Python refuses to run the file.",,,,
