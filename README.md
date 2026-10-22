@@ -21,13 +21,25 @@ current milestone.
 | --- | --- | --- |
 | Correction engine and 63 rule cards | [`engine/`](engine/) | Working (M1 done) |
 | Exercises and logic errors | [`curriculum/`](curriculum/) | 18 exercises (M2 done) |
-| Web app | `app/` | Next (M3) |
+| Web app (offline, installable) | [`app/`](app/) | Core loop working (M3 done) |
 | Tutor model training | `training/` | Planned (M6, M7) |
 | VS Code extension | `extension/` | Planned (M9) |
 
+## Try the app
+
+Requires Node 22.
+
+```bash
+cd app && npm ci && npm run dev
+```
+
+Then open the address it prints. Everything runs in your browser: the first
+load fetches the Python runtime (about 5 MB compressed), and after that it
+works offline.
+
 ## Try the engine
 
-Requires Python 3.13.
+Requires Python 3.13 or later.
 
 ```bash
 uv venv .venv && source .venv/bin/activate
