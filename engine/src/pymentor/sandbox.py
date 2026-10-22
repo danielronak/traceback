@@ -59,6 +59,7 @@ class RunResult:
     # here. Never serialised.
     namespace: dict[str, Any] = field(default_factory=dict, repr=False)
     printed: str = ""  # only what the program printed (no prompts or echoes)
+    interrupted: bool = False  # stopped by the learner, not by a problem
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -67,12 +68,20 @@ class RunResult:
             "diagnostic": self.diagnostic.to_dict() if self.diagnostic else None,
             "inputs_used": self.inputs_used,
             "steps": self.steps,
+            "interrupted": self.interrupted,
         }
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> RunResult:
         diagnostic = Diagnostic.from_dict(d["diagnostic"]) if d["diagnostic"] else None
-        return cls(d["stdout"], diagnostic, d["inputs_used"], d["steps"], printed=d["printed"])
+        return cls(
+            d["stdout"],
+            diagnostic,
+            d["inputs_used"],
+            d["steps"],
+            printed=d["printed"],
+            interrupted=d.get("interrupted", False),
+        )
 
 
 @dataclass
@@ -86,12 +95,18 @@ class Evaluation:
 
 
 class _Output(io.StringIO):
-    """Captures output, keeping at most MAX_OUTPUT_CHARS."""
+    """Captures output, keeping at most MAX_OUTPUT_CHARS, optionally streaming it."""
+
+    def __init__(self, listener: Callable[[str], object] | None = None) -> None:
+        super().__init__()
+        self.listener = listener
 
     def write(self, text: str) -> int:
         room = MAX_OUTPUT_CHARS - self.tell()
         if room > 0:
             super().write(text[:room])
+            if self.listener is not None:
+                self.listener(text[:room])
         return len(text)
 
 
@@ -113,25 +128,37 @@ class _Tee:
 class _Session:
     """One traced run of learner code: input, output capture and the step budget."""
 
-    def __init__(self, inputs: Inputs, step_limit: int, time_limit: float) -> None:
-        self.transcript = _Output()
+    def __init__(
+        self,
+        inputs: Inputs,
+        step_limit: int,
+        time_limit: float,
+        on_output: Callable[[str], object] | None = None,
+    ) -> None:
+        self.transcript = _Output(on_output)
         self.printed = _Output()
         self.used: list[str] = []
-        self.read_input = _make_input(inputs, self.used, self.transcript)
+        self.read_input = _make_input(inputs, self.used, self.transcript, self._waited)
         self.step_limit = step_limit
         self.time_limit = time_limit
         self.steps = 0
+        self.deadline = 0.0
+        self.interrupted = False
+
+    def _waited(self, seconds: float) -> None:
+        # Time spent waiting for the learner to type doesn't count as running.
+        self.deadline += seconds
 
     def run(self, action: Callable[[], object]) -> Diagnostic | None:
         """Call ``action`` with learner frames traced; return the first problem."""
-        deadline = time.monotonic() + self.time_limit
+        self.deadline = time.monotonic() + self.time_limit
 
         def trace_lines(frame, event, arg):
             if event == "line":
                 self.steps += 1
                 if self.steps > self.step_limit:
                     raise _StopRun("steps", frame.f_lineno)
-                if self.steps % 10_000 == 0 and time.monotonic() > deadline:
+                if self.steps % 10_000 == 0 and time.monotonic() > self.deadline:
                     raise _StopRun("time", frame.f_lineno)
             return trace_lines
 
@@ -154,6 +181,9 @@ class _Session:
             return _stopped(stop, self.steps, self.time_limit)
         except SystemExit:
             return None  # exit() and sys.exit() end the program normally
+        except KeyboardInterrupt:
+            self.interrupted = True  # the learner pressed Stop
+            return None
         except BaseException as error:  # learner code can raise anything
             return from_exception(error)
         return None
@@ -165,14 +195,19 @@ def execute(
     *,
     step_limit: int = DEFAULT_STEP_LIMIT,
     time_limit: float = DEFAULT_TIME_LIMIT,
+    on_output: Callable[[str], object] | None = None,
 ) -> RunResult:
-    """Run a whole program as ``__main__`` and report the first problem."""
+    """Run a whole program as ``__main__`` and report the first problem.
+
+    ``on_output`` receives the transcript as it's written (output, prompts and
+    echoed answers), so a console can show a prompt before ``input()`` waits.
+    """
     syntax_error = check_syntax(source)
     if syntax_error is not None:
         return RunResult("", syntax_error)
 
     code = compile(source, LEARNER_FILENAME, "exec", dont_inherit=True)
-    session = _Session(inputs, step_limit, time_limit)
+    session = _Session(inputs, step_limit, time_limit, on_output)
     learner_builtins = dict(vars(builtins))
     learner_builtins["input"] = session.read_input
     namespace: dict[str, Any] = {"__name__": "__main__", "__builtins__": learner_builtins}
@@ -184,6 +219,7 @@ def execute(
         session.steps,
         namespace,
         printed=session.printed.getvalue(),
+        interrupted=session.interrupted,
     )
 
 
@@ -218,7 +254,12 @@ def evaluate(
     )
 
 
-def _make_input(inputs: Inputs, used: list[str], output: io.StringIO) -> Callable[..., str]:
+def _make_input(
+    inputs: Inputs,
+    used: list[str],
+    output: io.StringIO,
+    waited: Callable[[float], None],
+) -> Callable[..., str]:
     if callable(inputs):
         provider: Callable[[str], str] = inputs
     else:
@@ -233,7 +274,11 @@ def _make_input(inputs: Inputs, used: list[str], output: io.StringIO) -> Callabl
     def read_input(prompt: object = "") -> str:
         prompt_text = str(prompt)
         output.write(prompt_text)
-        answer = str(provider(prompt_text))
+        started = time.monotonic()
+        try:
+            answer = str(provider(prompt_text))
+        finally:
+            waited(time.monotonic() - started)
         output.write(answer + "\n")  # echo, as a terminal would show it
         used.append(answer)
         return answer

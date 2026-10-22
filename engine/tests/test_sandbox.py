@@ -81,3 +81,35 @@ def test_result_round_trips_through_json_shape():
     again = RunResult.from_dict(result.to_dict())
     assert again.diagnostic == result.diagnostic
     assert again.stdout == result.stdout
+
+
+def test_output_streams_to_a_listener_before_input_waits():
+    seen = []
+
+    def answer(prompt):
+        seen.append(("waiting", "".join(t for t in seen if isinstance(t, str))))
+        return "Ada"
+
+    execute("print('Hi')\nname = input('Name? ')\n", answer, on_output=seen.append)
+    assert ("waiting", "Hi\nName? ") in seen
+
+
+def test_time_spent_waiting_for_input_does_not_count():
+    import time
+
+    def slow_typist(prompt):
+        time.sleep(0.3)
+        return "x"
+
+    # Enough steps that the wall clock is checked after each wait.
+    source = "for i in range(3):\n    input()\n    for j in range(10_000):\n        pass\n"
+    assert execute(source, slow_typist, time_limit=0.5).diagnostic is None
+
+
+def test_learner_pressing_stop_is_not_a_crash():
+    def stop(prompt):
+        raise KeyboardInterrupt
+
+    result = execute("print('a')\ninput()\nprint('b')\n", stop)
+    assert result.diagnostic is None and result.interrupted
+    assert result.stdout == "a\n"

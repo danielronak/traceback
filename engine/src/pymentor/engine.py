@@ -39,6 +39,7 @@ class Report:
     ran: bool = False
     stdout: str = ""
     inputs_used: list[str] = field(default_factory=list)
+    stopped: bool = False  # the learner pressed Stop
 
     @property
     def blocking(self) -> Finding | None:
@@ -51,6 +52,7 @@ class Report:
             "ran": self.ran,
             "stdout": self.stdout,
             "inputs_used": self.inputs_used,
+            "stopped": self.stopped,
         }
 
 
@@ -74,12 +76,23 @@ class Engine:
         """Syntax and style only. Never runs the learner's code."""
         return Report(findings=self._static(source))
 
-    def run(self, source: str, inputs: Inputs = None) -> Report:
-        """The static check, then a run, if the code compiles."""
+    def run(
+        self,
+        source: str,
+        inputs: Inputs = None,
+        *,
+        on_output: Callable[[str], object] | None = None,
+    ) -> Report:
+        """The static check, then a run, if the code compiles.
+
+        ``on_output`` streams the program's transcript as it runs (in-process
+        runner only).
+        """
         findings = self._static(source)
         if any(f.diagnostic.severity is Severity.SYNTAX for f in findings):
             return Report(findings=findings)
-        result = self._execute(source, inputs)
+        extra = {"on_output": on_output} if on_output is not None else {}
+        result = self._execute(source, inputs, **extra)
         if result.diagnostic is not None:
             findings.append(self.explain(result.diagnostic, source, result.inputs_used))
         return Report(
@@ -87,6 +100,7 @@ class Engine:
             ran=True,
             stdout=result.stdout,
             inputs_used=result.inputs_used,
+            stopped=result.interrupted,
         )
 
     # --- building findings ---------------------------------------------------
@@ -167,8 +181,10 @@ class Engine:
             if d.line not in changed
         ]
 
-    def _execute(self, source: str, inputs: Inputs) -> RunResult:
-        return self.runner(source, inputs, step_limit=self.step_limit, time_limit=self.time_limit)
+    def _execute(self, source: str, inputs: Inputs, **extra: Any) -> RunResult:
+        return self.runner(
+            source, inputs, step_limit=self.step_limit, time_limit=self.time_limit, **extra
+        )
 
     def _replay(self, source: str, inputs: list[str]) -> RunResult:
         # Fixes are verified with exactly the input the learner typed.
