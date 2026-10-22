@@ -126,8 +126,10 @@ pre code {
   color: var(--accent);
   font-weight: 600;
 }
-.status {
+.settings-button {
   margin-left: auto;
+}
+.status {
   font-size: 0.85rem;
   color: var(--muted);
   white-space: nowrap;
@@ -786,4 +788,91 @@ button.link:hover {
 }
 .quiz-right {
   color: var(--good);
+}
+
+/* --- settings and reports -------------------------------------------------------- */
+
+dialog.settings {
+  width: min(34rem, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  background: var(--panel);
+  color: var(--text);
+}
+dialog.settings::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+dialog.settings h2 {
+  margin: 0 0 0.5rem;
+}
+dialog.settings h3 {
+  margin: 1rem 0 0.3rem;
+  font-size: 1rem;
+}
+dialog.settings p {
+  margin: 0.3rem 0;
+}
+.settings-close {
+  margin-top: 1rem;
+  text-align: right;
+}
+label.check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+button.danger {
+  color: var(--syntax);
+  border-color: var(--syntax);
+}
+.editor-tip {
+  margin: -0.4rem 0 0;
+  font-size: 0.8rem;
+}
+.report {
+  margin-top: 0.6rem;
+  font-size: 0.88rem;
+}
+.report summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+.report form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.report fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+.report legend {
+  padding: 0;
+  margin-bottom: 0.2rem;
+}
+.report-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.report textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+}
+.report form button {
+  align-self: flex-start;
+}
+.report-sent {
+  margin-top: 0.6rem !important;
 }

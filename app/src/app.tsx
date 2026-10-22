@@ -12,7 +12,9 @@ import { findingKey } from "./editor/positions";
 import { EngineClient, EngineRestarted, type ReadyInfo, type RunHandlers } from "./engine/client";
 import type { CourseItem, Finding, Report, TestResult } from "./engine/types";
 import { ExercisePanel } from "./exercises/ExercisePanel";
+import { explanationReported, type Feedback, NO_FEEDBACK, unknownErrorsSeen } from "./progress/feedback";
 import {
+  EMPTY,
   exerciseAttempted,
   KeyValueStore,
   lessonRead,
@@ -22,6 +24,10 @@ import {
   practised,
 } from "./progress/store";
 import { useProgress } from "./progress/useProgress";
+import { useStored } from "./progress/useStored";
+import { loadSettings, saveSettings, type Settings } from "./settings/settings";
+import { SettingsDialog } from "./settings/SettingsDialog";
+import { FRESH } from "./cards/ladder";
 import { load, save } from "./storage";
 
 // The design doc's mockup: a syntax error on line 2 and a style hint on line 4.
@@ -44,6 +50,12 @@ export function App() {
   const engine = useMemo(() => new EngineClient(CURRICULUM_FILES), []);
   const store = useMemo(() => new KeyValueStore(), []);
   const [progress, updateProgress] = useProgress(store);
+  const [feedback, updateFeedback] = useStored<Feedback>(store, "feedback", NO_FEEDBACK, (saved, now) => ({
+    unknown: [...saved.unknown, ...now.unknown],
+    reports: [...saved.reports, ...now.reports],
+  }));
+  const [settings, setSettings] = useState<Settings>(loadSettings);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [ready, setReady] = useState<ReadyInfo | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>(savedMode);
@@ -137,6 +149,7 @@ export function App() {
    * from the last run doesn't count again.
    */
   function recordMistakes(report: { findings: Finding[] }) {
+    updateFeedback((f) => unknownErrorsSeen(f, report.findings, source.current));
     const current = report.findings
       .filter((f) => f.card)
       .map((f) => ({ card: f.card!.id, key: findingKey(f.diagnostic) }));
@@ -195,7 +208,15 @@ export function App() {
       setSelected(0);
       recordMistakes(report);
       const crash = report.findings.find((f) => f.diagnostic.severity === "runtime");
-      setNote(report.stopped ? "Stopped." : crash ? "The program crashed. See the card." : "The program finished.");
+      setNote(
+        report.stopped
+          ? "Stopped."
+          : !report.ran
+            ? "Python couldn't run this. See the card."
+            : crash
+              ? "The program crashed. See the card."
+              : "The program finished.",
+      );
     } catch (error) {
       flushOutput();
       setNote(error instanceof EngineRestarted ? error.message : `Something went wrong: ${error}`);
@@ -278,6 +299,9 @@ export function App() {
             Playground
           </button>
         </nav>
+        <button type="button" class="settings-button" onClick={() => setSettingsOpen(true)}>
+          Settings
+        </button>
         <span class={`status ${ready ? "ok" : failure ? "bad" : ""}`} role="status">
           {failure ? (
             "Python failed to load"
@@ -293,6 +317,23 @@ export function App() {
       </header>
 
       {failure && <p class="banner bad">{failure}</p>}
+
+      <SettingsDialog
+        open={settingsOpen}
+        settings={settings}
+        feedback={feedback}
+        pythonVersion={ready?.pythonVersion ?? "unknown"}
+        onChange={(next) => {
+          setSettings(next);
+          saveSettings(next);
+        }}
+        onClearProgress={() => {
+          updateProgress(() => EMPTY);
+          updateFeedback(() => NO_FEEDBACK);
+          setCardStates({});
+        }}
+        onClose={() => setSettingsOpen(false)}
+      />
 
       <main class={`layout ${layout}`}>
         {course && mode.kind === "course" && (
@@ -346,6 +387,7 @@ export function App() {
                 onSelectFinding={setSelected}
                 label="Python code editor"
               />
+              <p class="editor-tip muted">Tip: press Escape, then Tab, to move on from the editor.</p>
               <Console
                 output={output}
                 waiting={waiting}
@@ -373,6 +415,10 @@ export function App() {
                 emptyMessage={ready ? "No problems found so far." : "Loading Python…"}
                 practiceDue={(cardId) => practiceDue(progress, cardId)}
                 onPractised={(cardId) => updateProgress((p) => practised(p, cardId))}
+                initial={settings.showFixes ? { ...FRESH, fix: true } : FRESH}
+                onReport={(finding, reason, text) =>
+                  updateFeedback((f) => explanationReported(f, finding, reason, text, source.current))
+                }
               />
             </aside>
           </>

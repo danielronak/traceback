@@ -132,15 +132,56 @@ test("repeating a mistake turns the card into a quick quiz first", async ({ page
     await setCode(page, "x = 1\nif x > 0\n    print(x)\n");
     await run(page);
     await expect(page.locator(".card-title").first()).toHaveText("Missing colon on line 2");
+    await expect(page.locator(".console-note")).toHaveText("Python couldn't run this. See the card.");
   }
   const card = page.locator(".card").first();
   await expect(card.locator(".quiz-intro")).toBeVisible();
   await expect(card.getByRole("button", { name: "Show the fix" })).toHaveCount(0);
-  await card.getByRole("button", { name: "if score > 50", exact: true }).click();
+  await card.getByRole("button", { name: "if score > 50", exact: true }).click(); // wrong
   await expect(card.locator(".quiz-feedback")).toHaveText("Not quite. Have another go.");
   await card.getByRole("button", { name: "if score > 50:", exact: true }).click();
   await expect(card.locator(".quiz-right")).toContainText("Right!");
   await expect(card.getByRole("button", { name: "Show the fix" })).toBeVisible();
+});
+
+test("feedback stays on the device until downloaded, without code unless chosen", async ({ page }) => {
+  await open(page);
+  await setCode(page, "x = 1\nraise RuntimeError('boom')\n");
+  await run(page);
+  await expect(page.locator(".card-title").first()).toHaveText("RuntimeError: boom");
+
+  await setCode(page, "count = 0\nprint(10 / count)\n");
+  await run(page);
+  const card = page.locator(".card").first();
+  await card.getByText("Report a problem with this explanation").click();
+  await card.getByLabel("It's confusing").check();
+  await card.getByLabel("Anything to add? (optional)").fill("I don't know what 'divide by' means");
+  await card.getByRole("button", { name: "Save report" }).click();
+  await expect(card.locator(".report-sent")).toContainText("saved on this device");
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await expect(dialog).toContainText("errors it has no lesson for yet (1)");
+  await expect(dialog).toContainText("explanations you reported (1)");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    dialog.getByRole("button", { name: "Download feedback" }).click(),
+  ]);
+  const text = await (await download.createReadStream()).toArray().then((chunks) => Buffer.concat(chunks).toString());
+  const data = JSON.parse(text);
+  expect(data.unknownErrors[0]).toMatchObject({ code: "RuntimeError", message: "boom", count: 1 });
+  expect(data.explanationReports[0]).toMatchObject({ cardId: "zero-division", reason: "confusing" });
+  expect(text).not.toContain("raise RuntimeError");
+  expect(text).not.toContain("count = 0");
+});
+
+test("the teacher setting shows fixes straight away", async ({ page }) => {
+  await open(page);
+  await expect(page.locator(".fix")).toHaveCount(0);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByLabel("Show the fix straight away, instead of hints first").check();
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.locator(".fix-after").first()).toHaveText("if len(scores) > 2:");
 });
 
 test("an exercise: fail, get taught, fix, pass, and keep the draft", async ({ page }) => {
