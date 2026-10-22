@@ -139,11 +139,12 @@ def insert_colon(ctx: FixContext) -> list[str]:
 
 @generator
 def assign_to_equals(ctx: FixContext) -> list[str]:
+    """The first lone `=` from where Python pointed (it may highlight the left side)."""
     d = ctx.diagnostic
+    offset = len(indentation(ctx.line))
     for tok in tokens(ctx.line.strip() + "\n"):
-        offset = len(indentation(ctx.line))
         start = tok.start[1] + offset
-        if tok.string == "=" and d.col <= start < (d.end_col or len(ctx.line)):
+        if tok.string == "=" and start >= d.col:
             return [replace_span(ctx.source, d.line, start, start + 1, "==")]
     return []
 
@@ -307,6 +308,17 @@ def str_right_operand(ctx: FixContext) -> list[str]:
     if node is None:
         return []
     return [_wrap(ctx, node.right, "str")]
+
+
+@generator
+def int_right_operand(ctx: FixContext) -> list[str]:
+    """total += digit  ->  total += int(digit)"""
+    node = _node_at(ctx, ast.AugAssign) or _node_at(ctx, ast.BinOp)
+    if isinstance(node, ast.AugAssign):
+        return [_wrap(ctx, node.value, "int")]
+    if isinstance(node, ast.BinOp):
+        return [_wrap(ctx, node.right, "int")]
+    return []
 
 
 @generator

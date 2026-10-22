@@ -3,7 +3,7 @@
 [[card]]
 id = "input-is-string"
 title = "`{input_name}` holds text from `input()`, not a number"
-match = { code = "TypeError", message = "^(can only concatenate str|unsupported operand type|'.+' not supported between)", when = { input_name = true } }
+match = { code = "TypeError", message = "^(can only concatenate str|unsupported operand type|'.+' not supported between|not all arguments converted during string formatting)", when = { input_name = true } }
 rule = "`input()` always gives back text (a `str`), even when the user types digits. Convert it with `int()` or `float()` before doing maths with it or comparing it with numbers."
 why = "Python can't know what the user will type: `42`, `forty-two`, or nothing at all. So `input()` returns exactly the characters typed and leaves it to you to say whether they should be a number."
 hints = [
@@ -17,6 +17,8 @@ examples = [
   { source = "age = input(\"Age? \")\nprint(age + 1)\n", inputs = ["14"], after = "age = int(input(\"Age? \"))" },
   { source = "n = input()\ntotal = 10 * 2 + n\n", inputs = ["3"], after = "n = int(input())" },
   { source = "age = input()\nif age >= 18:\n    print('adult')\n", inputs = ["20"], after = "age = int(input())" },
+  { source = "number = input()\nif number % 2 == 0:\n    print('even')\n", inputs = ["7"], after = "number = int(input())" },
+  { source = "total = 0\namount = input()\ntotal += amount\n", inputs = ["5"], after = "amount = int(input())" },
 ]
 
 [card.quiz]
@@ -227,6 +229,7 @@ hints = [
 related = ["missing-return", "none-attribute"]
 examples = [
   { source = "def double(n):\n    print(n * 2)\n\nresult = double(4) + 1\n" },
+  { source = "def area(r):\n    print(3.14 * r * r)\n\nprint(f\"{area(2):.2f}\")\n" },
 ]
 
 [[card]]
@@ -305,4 +308,21 @@ hints = [
 examples = [
   { source = "first, second = [1, 2, 3]\n" },
   { source = "a, b, c = 'hi'\n" },
+]
+
+[[card]]
+id = "number-plus-text"
+title = "`+` can't add text to a number (line {line})"
+match = { code = "TypeError", message = "^unsupported operand type\\(s\\) for \\+=?: '(int|float)' and 'str'" }
+rule = "`+` adds numbers to numbers. To add a number written as text, such as `\"7\"`, convert it first with `int()` or `float()`."
+why = "Python won't guess whether you meant to add or to join, so mixing a number and text is an error rather than a surprise. Values taken out of text, like each character in `\"123\"`, are still text."
+hints = [
+  "What type is each side of the `+` on line {line}?",
+  "The left side is a number and the right side is text (type `str`).",
+  "Wrap the text in `int(...)` so both sides are numbers.",
+]
+fix = "int_right_operand"
+related = ["input-is-string", "str-plus-int"]
+examples = [
+  { source = "total = 0\nfor digit in \"123\":\n    total += digit\nprint(total)\n", after = "    total += int(digit)" },
 ]

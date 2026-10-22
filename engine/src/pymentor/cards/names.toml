@@ -42,6 +42,7 @@ fix = "replace_name:builtin_name"
 examples = [
   { source = "pritn(\"hello\")\n", after = "print(\"hello\")" },
   { source = "Print(\"hi\")\n", after = "print(\"hi\")" },
+  { source = "x = itn(\"5\")\n", after = "x = int(\"5\")" },
 ]
 
 [card.quiz]
@@ -116,9 +117,9 @@ examples = [
 [[card]]
 id = "name-meant-string"
 title = "Did you mean the text `\"{name}\"`?"
-match = { code = "NameError", when = { in_print = true, word_like = true, defined_anywhere = false, similar_name = false, builtin_name = false, module = false } }
+match = { code = "NameError", when = { looks_like_text = true, word_like = true, defined_anywhere = false, similar_name = false, builtin_name = false, module = false } }
 priority = 10
-rule = "Text goes inside quote marks: `print(\"{name}\")`. Without quotes, Python reads `{name}` as the name of a variable."
+rule = "Text goes inside quote marks: `\"{name}\"`. Without quotes, Python reads `{name}` as the name of a variable."
 why = "Quotes are how Python tells data (text you want to show) apart from code (the names of things in your program). Without them `{name}` looks like a variable name, and no variable has that name."
 hints = [
   "Is `{name}` on line {line} meant to be a variable, or words to show?",
@@ -128,6 +129,8 @@ hints = [
 fix = "quote_name"
 examples = [
   { source = "print(hello)\n", after = "print(\"hello\")" },
+  { source = "name = Ada\nprint(name)\n", after = "name = \"Ada\"" },
+  { source = "menu = {\"tea\": 1.5}\nprint(menu[tea])\n", after = "print(menu[\"tea\"])" },
 ]
 
 [card.quiz]

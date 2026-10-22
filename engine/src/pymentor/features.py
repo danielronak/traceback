@@ -233,6 +233,7 @@ def _syntax(context: Context) -> Features:
         # A valid else/elif never errors on its own line, so one that does
         # has no if (or loop, or try) for it to belong to.
         features["orphan_else"] = word in ("else", "elif") and context.diagnostic.col == 0
+    features["in_condition"] = features.get("keyword") in ("if", "elif", "while")
     match = context.message_match(r"^cannot assign to (literal|function call|expression)")
     if match:
         features["assign_target"] = match[1]
@@ -248,12 +249,18 @@ STATEMENT_KEYWORDS = (
 
 
 def _keyword_typo(word: str) -> str | None:
-    """`whlie`, `retrun`, `If`: a misspelled statement keyword."""
+    """`whlie`, `retrun`, `If`, `ddef`, `fro`: a misspelled statement keyword."""
     if word in keyword.kwlist or word in PUBLIC_BUILTINS:
         return None
     lowered = word.lower()
     if lowered in STATEMENT_KEYWORDS:
         return lowered  # `If`, `Def`: right word, wrong capital
+    undoubled = re.sub(r"(.)\1", r"\1", lowered)
+    if undoubled in STATEMENT_KEYWORDS:
+        return undoubled  # `ddef`, `iff`: a doubled letter
+    for candidate in STATEMENT_KEYWORDS:
+        if len(candidate) <= 4 and sorted(candidate) == sorted(lowered):
+            return candidate  # `fro`, `fi`: letters swapped (Python said the line is invalid)
     # Short keywords can't be told apart from ordinary names, so be strict.
     return closest(word, frozenset(k for k in STATEMENT_KEYWORDS if len(k) >= 4), cutoff=0.8)
 
@@ -321,6 +328,12 @@ def _name_error(context: Context) -> Features:
 
     similar = closest(name, user_names - {name})
     builtin = None if similar else closest(name, PUBLIC_BUILTINS - {name}, cutoff=0.8)
+    if not similar and not builtin and node is not None and _is_called(tree, node):
+        # Too short for similarity (`itn`, `eln`): the same letters as a builtin.
+        same_letters = sorted(
+            b for b in COMMON_CALLS if b != name and sorted(b) == sorted(name.lower())
+        )
+        builtin = same_letters[0] if same_letters else None
     module = name if name in STDLIB_MODULES and name not in user_names else None
     return {
         "similar_name": similar,
@@ -331,7 +344,40 @@ def _name_error(context: Context) -> Features:
         "defined_in_function": local_elsewhere[0].scope if local_elsewhere else None,
         "in_print": in_print,
         "word_like": name.isalpha(),
+        "looks_like_text": in_print or (node is not None and _used_as_a_value(tree, node)),
     }
+
+
+# Builtins beginners call all the time; a same-letters typo of one is a typo.
+COMMON_CALLS = ("int", "len", "str", "sum", "max", "min", "abs", "print", "input", "range", "float")
+
+
+def _is_called(tree: ast.Module, node: ast.Name) -> bool:
+    return any(isinstance(n, ast.Call) and n.func is node for n in ast.walk(tree))
+
+
+def _used_as_a_value(tree: ast.Module, node: ast.Name) -> bool:
+    """`name = Ada`, `[apple, "kiwi"]`, `menu[tea]`, `x in aeiou`: places where
+    a bare word is far more likely to be missing quotes than a missing variable.
+    (In arithmetic, `y = x + 1`, it's more likely a missing variable.)"""
+    if not (len(node.id) >= 3 and node.id.isalpha()):
+        return False
+    for parent in ast.walk(tree):
+        if isinstance(parent, ast.Assign) and parent.value is node:
+            return True
+        if isinstance(parent, ast.List | ast.Tuple | ast.Set) and node in parent.elts:
+            return True
+        if isinstance(parent, ast.Dict) and (node in parent.keys or node in parent.values):
+            return True
+        if isinstance(parent, ast.Subscript) and parent.slice is node:
+            return True
+        if isinstance(parent, ast.Call) and node in parent.args and parent.func is not node:
+            return True
+        if isinstance(parent, ast.Compare) and node in parent.comparators:
+            return True
+        if isinstance(parent, ast.Return) and parent.value is node:
+            return True
+    return False
 
 
 @extractor("UnboundLocalError")
@@ -364,7 +410,10 @@ def _type_error(context: Context) -> Features:
     match = context.message_match(r"^unsupported operand type\(s\) for (.+?): '(\w+)' and '(\w+)'")
     if match:
         features.update(operator=match[1], left_type=match[2], right_type=match[3])
-    if "left_type" in features and tree is not None:
+    if tree is not None and (
+        "left_type" in features
+        or context.message_match(r"^not all arguments converted during string formatting")
+    ):
         features.update(_from_input(tree, diagnostic))
 
     for pattern in (
@@ -428,7 +477,10 @@ def _type_error(context: Context) -> Features:
     match = context.message_match(r"^can't multiply sequence by non-int of type '(\w+)'")
     if match:
         features["factor_type"] = match[1]
-    features["none_operand"] = "NoneType" in (features.get("left_type"), features.get("right_type"))
+    features["none_operand"] = "NoneType" in (
+        features.get("left_type"),
+        features.get("right_type"),
+    ) or bool(context.message_match(r"passed to NoneType\.__format__"))
     return features
 
 

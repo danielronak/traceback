@@ -30,7 +30,7 @@ explain = "A line that starts a block (if, for, while, def, ...) ends with a col
 [[card]]
 id = "assign-in-condition"
 title = "`=` used where `==` was meant on line {line}"
-match = { code = "SyntaxError", message = "Maybe you meant '==' or ':=' instead of '='" }
+match = { code = "SyntaxError", message = "Maybe you meant '=='", when = { in_condition = true } }
 rule = "`=` stores a value in a variable. `==` asks whether two values are equal. A condition needs the question, so it uses `==`."
 why = "Python keeps the two jobs apart so a typo can't silently change a variable when you meant to compare it. In some languages `if x = 5` quietly stores 5 in `x` and counts as true. Python refuses to run it instead."
 hints = [
@@ -42,6 +42,7 @@ fix = "assign_to_equals"
 examples = [
   { source = "x = 5\nif x = 5:\n    print(\"five\")\n", after = "if x == 5:" },
   { source = "answer = \"yes\"\nwhile answer = \"yes\":\n    answer = input()\n", after = "while answer == \"yes\":" },
+  { source = "n = 4\nif n % 2 = 0:\n    print(\"even\")\n", after = "if n % 2 == 0:" },
 ]
 
 [card.quiz]
@@ -273,6 +274,8 @@ hints = [
 fix = "fix_keyword"
 examples = [
   { source = "whlie True:\n    break\n", after = "while True:" },
+  { source = "ddef greet():\n    print('hi')\n", after = "def greet():" },
+  { source = "fro n in range(3):\n    print(n)\n", after = "for n in range(3):" },
   { source = "x = 3\nIf x > 2:\n    print(x)\n", after = "if x > 2:" },
 ]
 
