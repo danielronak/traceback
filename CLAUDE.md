@@ -39,7 +39,7 @@ engine/      Python package `pymentor`: the shared core. Standard library only.
   src/pymentor/        engine modules (see docs/architecture.md for each)
   src/pymentor/cards/  the rule-card library (TOML), one file per topic
   tests/               test_cards.py self-tests every card from its examples
-curriculum/  course content: exercises/NN-id.toml (lessons come in M4)
+curriculum/  course content: course.toml, lessons/NN-id.md, exercises/NN-id.toml
 app/         web app: Vite + TS + Preact + CodeMirror, Pyodide in a worker
 training/    model training (M6/M7, not started)
 benchmark/   frozen evaluation sets (M5, not started)
@@ -131,8 +131,8 @@ Card text rules:
 
 ## Exercises
 
-Exercises live in `curriculum/exercises/NN-id.toml`, one per file. The number
-sets the order and the rest must match `id`. Each has `id`, `title`, `prompt`
+Exercises live in `curriculum/exercises/NN-id.toml`, one per file. The rest
+of the file name must match `id`; the course order comes from `course.toml`. Each has `id`, `title`, `prompt`
 (Markdown), `starter`, `solution`, up to 3 `hints`, and `tests`:
 
 ```toml
@@ -146,6 +146,20 @@ tests = [
 pass with **no findings at all** (it's the model answer), and the starter must
 compile, fail, and get a rule card as its first finding. A "fix the bug"
 starter should aim at a specific card.
+
+## Lessons and the course
+
+Lessons live in `curriculum/lessons/NN-id.md`: Markdown after TOML front matter
+(`id`, `title`) between `+++` lines. Every ` ```python ` block is a runnable
+snippet and must run with **no findings**, unless it is marked
+` ```python mistake=CARD-ID `, in which case that card must be its first
+finding. Add `input=VALUE` (repeatable, shell-quoted) for `input()`. Use
+` ```text ` for code that shouldn't run.
+
+`curriculum/course.toml` orders everything into units:
+`steps = [{ lesson = "printing" }, { exercise = "hello-world" }]`. Every
+lesson and exercise must appear exactly once, so add a new one to the course
+in the same commit. `test_curriculum.py` checks all of this.
 
 ## Testing
 
