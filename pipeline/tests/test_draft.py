@@ -122,3 +122,23 @@ def test_drafting_order_is_balanced_across_cards():
     assert sorted(e["case"] for e in ordered) == sorted(e["case"] for e in examples)
     assert [e["card"] for e in ordered[:6]] == ["a", "b"] * 3
     assert draft.balanced(examples) == ordered  # stable, so runs resume the same way
+
+
+def test_limit_is_a_total_so_rerunning_resumes(tmp_path, small_dataset):
+    import shutil
+
+    data = tmp_path / "data"
+    shutil.copytree(small_dataset[0], data)
+    for name in ("drafts-train.jsonl", "rejected-train.jsonl"):
+        (data / name).unlink(missing_ok=True)
+    calls = []
+
+    def teacher(system, prompt_text):
+        calls.append(prompt_text)
+        return card_teacher(system, prompt_text)
+
+    draft.draft(data, "train", teacher, name="fake", limit=6, log=lambda _: None)
+    draft.draft(data, "train", teacher, name="fake", limit=6, log=lambda _: None)
+    assert len(calls) == 6  # the second run found the 6 already done
+    draft.draft(data, "train", teacher, name="fake", limit=9, log=lambda _: None)
+    assert len(calls) == 9

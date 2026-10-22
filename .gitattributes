@@ -1,0 +1,7 @@
+# Line endings are LF in the repository and in every checkout, Windows
+# included, so files written on one OS compare equal on another.
+* text=auto eol=lf
+
+# Frozen benchmark versions are checked byte for byte (SHA256SUMS): never
+# convert them.
+benchmark/v*/** -text

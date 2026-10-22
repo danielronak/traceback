@@ -52,3 +52,11 @@ def test_sampling_spreads_cases_across_cards():
     ]
     chosen = benchmark._sample_evenly(cases, 6)
     assert sum(c["finding"]["card"]["id"] == "rare" for c in chosen) == 2
+
+
+def test_written_files_use_lf_on_every_os(tmp_path):
+    # On Windows, text-mode writes turn "\n" into "\r\n" unless told not to,
+    # which would break the checksum of a benchmark built there.
+    benchmark.write([{"id": "a", "source": "x\n"}], tmp_path)
+    assert b"\r\n" not in (tmp_path / "cases.jsonl").read_bytes()
+    assert b"\r\n" not in (tmp_path / "SHA256SUMS").read_bytes()

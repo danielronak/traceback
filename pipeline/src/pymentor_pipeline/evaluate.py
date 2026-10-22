@@ -198,7 +198,7 @@ def hand_sheet(
         step = max(1, len(group) // per_task)
         chosen.extend(group[::step][:per_task])
     with path.open("w", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
+        writer = csv.writer(file, lineterminator="\n")
         writer.writerow(
             [
                 "case",
@@ -245,8 +245,10 @@ def save_results(
     report = score(todo, outputs) | {"model": name, "benchmark": version} | (extra or {})
     folder = benchmarks / "results" / version
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / f"{name}.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    with (folder / f"{name}-outputs.jsonl").open("w", encoding="utf-8") as file:
+    (folder / f"{name}.json").write_text(
+        json.dumps(report, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
+    with (folder / f"{name}-outputs.jsonl").open("w", encoding="utf-8", newline="\n") as file:
         for output in outputs:
             file.write(json.dumps({**output, "ms": round(output.get("ms") or 0, 3)}) + "\n")
     rows = hand_sheet(todo, outputs, folder / f"{name}-hand-scoring.csv")

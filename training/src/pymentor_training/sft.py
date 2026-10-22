@@ -104,7 +104,7 @@ def train(config: Config, *, resume: bool = False, log: Callable[[str], object] 
         stepper.step_count = state["step"]
         log(f"resumed at step {state['step']}")
     else:
-        (out / "config.json").write_text(json.dumps(asdict(config), indent=2) + "\n")
+        (out / "config.json").write_text(json.dumps(asdict(config), indent=2) + "\n", newline="\n")
 
     pad_id = tokenizer.pad_token_id
     model.train()
@@ -160,7 +160,7 @@ def train(config: Config, *, resume: bool = False, log: Callable[[str], object] 
         "seconds": round(time.monotonic() - started, 1),
         "device": str(device),
     }
-    (out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    (out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", newline="\n")
     return summary
 
 
@@ -366,5 +366,5 @@ def _checkpoint(model, tokenizer, stepper, state, folder: Path) -> None:
 
 
 def _append(path: Path, entry: dict) -> None:
-    with path.open("a", encoding="utf-8") as file:
+    with path.open("a", encoding="utf-8", newline="\n") as file:
         file.write(json.dumps(entry) + "\n")

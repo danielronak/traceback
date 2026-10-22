@@ -190,7 +190,9 @@ def generate(
         "files": files,
         "seconds": round(time.monotonic() - started, 1),
     }
-    (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (out / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
     total = sum(manifest["examples"].values())
     log(f"{len(every_case)} cases, {total} examples in {manifest['seconds']}s -> {out}")
     return manifest
@@ -304,7 +306,7 @@ def _serve(conn: Connection, fn: Callable[[Job], Any]) -> None:
 
 def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> dict[str, Any]:
     text = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows)
-    path.write_text(text, encoding="utf-8")
+    path.write_text(text, encoding="utf-8", newline="\n")
     return {"rows": len(rows), "sha256": hashlib.sha256(text.encode()).hexdigest()}
 
 

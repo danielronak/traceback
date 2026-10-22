@@ -523,3 +523,13 @@ stays in the comparison but is unlikely to ship to phones. Shipped or not,
 every tutor only explains the facts the engine supplies about the learner's
 own code, and the app falls back to the card when there is no model or an
 answer fails grounding. *Accepted.*
+
+**D46. The training runbook targets the owner's Windows laptop.** The owner
+trains on Windows 11 with a 4 GB RTX 3050, so the runbook in
+`training/README.md` is written for PowerShell. It installs PyTorch's CUDA build
+explicitly, since the default Windows build is CPU-only, and uses Ollama as
+the local teacher server, the simplest on Windows; llama.cpp works too. CI
+runs the engine, pipeline and training suites on `windows-latest` as well, so
+Windows-only failures show up before the owner hits them. `draft --limit` is
+the total for a split, so re-running an interrupted command resumes it.
+*Accepted.*
