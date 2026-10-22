@@ -110,3 +110,15 @@ def test_teachers_must_be_local():
     for url in ("https://api.example.com/v1/chat/completions", "http://10.0.0.5:8080/v1"):
         with pytest.raises(ValueError, match="locally"):
             teachers.local_teacher(url)
+
+
+def test_drafting_order_is_balanced_across_cards():
+    examples = [
+        {"case": f"{card}{n}", "task": "explain", "card": card}
+        for card, many in (("a", 9), ("b", 3))
+        for n in range(many)
+    ]
+    ordered = draft.balanced(examples)
+    assert sorted(e["case"] for e in ordered) == sorted(e["case"] for e in examples)
+    assert [e["card"] for e in ordered[:6]] == ["a", "b"] * 3
+    assert draft.balanced(examples) == ordered  # stable, so runs resume the same way
