@@ -51,3 +51,7 @@ data/generated/
 *.swp
 .DS_Store
 Thumbs.db
+
+# --- App test output ---
+app/test-results/
+app/playwright-report/
