@@ -237,14 +237,15 @@ model (D40).
 
 ## M6: Track A, fine-tuning an existing model (fallback and comparison)
 
-- [ ] `training/` package, with its own dependencies (PyTorch, transformers)
-- [ ] Shortlist and pick a base model, and record why; pick the local teacher
-      model (D40) at the same time
+- [x] `training/` package, with its own dependencies (PyTorch, transformers)
+- [x] Shortlist and pick a base model, and record why; pick the local teacher
+      model (D40) at the same time *(D42: two tutors compared, Qwen3-4B teacher)*
 - [ ] Draft training targets with the local teacher, spot-check them with the
       review tool, and record the teacher and its licence in the data card
-- [ ] SFT script (full fine-tune), with task tokens added as special tokens
+- [x] SFT script (full fine-tune), with task tokens added as special tokens
 - [ ] Evaluate, quantise to int4 ONNX, then re-evaluate, since tiny models are
-      sensitive to quantisation
+      sensitive to quantisation *(tools done: `evaluate`, `export`; runs
+      happen on the laptop, `training/README.md`)*
 - [ ] Measure latency on CPU/WASM and WebGPU (D13)
 - [ ] Optional: DPO with the automatic judge (the fix passes and grounding is
       clean)
@@ -252,6 +253,10 @@ model (D40).
 
 **Done when:** we know whether Track A clears the go/no-go criteria, with
 numbers.
+
+**Status:** the code is built and tested on a tiny model; the real runs need
+the owner's GPU (this build machine has none and can't reach Hugging Face).
+Next: steps 0 to 7 of the runbook in `training/README.md`.
 
 ## M7: Track B, pretraining from scratch (the main experiment)
 

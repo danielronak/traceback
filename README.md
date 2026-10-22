@@ -23,7 +23,7 @@ current milestone.
 | Course: 9 lessons, 18 exercises | [`curriculum/`](curriculum/) | Working (M4) |
 | Web app (offline, installable) | [`app/`](app/) | Working; [deploy guide](docs/deploy.md) |
 | Training data, benchmark and evaluation harness | [`pipeline/`](pipeline/), [`benchmark/`](benchmark/) | Working (M5) |
-| Tutor model training | `training/` | Planned (M6, M7) |
+| Tutor model training | [`training/`](training/) | Code ready (M6); real runs on a GPU next |
 | VS Code extension | `extension/` | Planned (M9) |
 
 ## Try the app

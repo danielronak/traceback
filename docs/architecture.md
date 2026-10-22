@@ -56,7 +56,12 @@ app/           Web app: Vite + TypeScript + Preact, CodeMirror 6, Pyodide in a W
   src/progress/  progress and feedback in IndexedDB, as pure update functions
   src/settings/  the settings dialog
   src/sw.template.js  the service worker, filled in at build time
-training/      Model training (M6, M7): tokenizer, pretraining, SFT, export. PyTorch.
+training/      Python package `pymentor_training` (M6, M7). PyTorch; never shipped.
+  src/pymentor_training/
+    data.py        drafts to token ids, section markers as special tokens, answer-only loss
+    sft.py         the fine-tuning loop (resumable, low-memory options)
+    infer.py       a trained model (PyTorch or ONNX) as a callable for the harness
+    export.py      ONNX export and int4 quantisation, in transformers.js's layout
 benchmark/     Frozen, versioned evaluation sets and their results (M5)
 extension/     VS Code extension (M9)
 docs/          vision, architecture, plan
@@ -464,3 +469,31 @@ for 20,000 verified examples. The generator produces about 85,000 engine-
 verified prompts. Their targets come from a local teacher (D40), so the
 training set proper is "drafts that passed grounding and fix verification",
 counted once a teacher has run. *Accepted.*
+
+**D42. ⚑ Track A compares two tutors; the teacher is Qwen3-4B-Instruct-2507.**
+The owner chose to fine-tune both `HuggingFaceTB/SmolLM2-360M-Instruct` (Llama
+architecture like Track B, 49k vocabulary, roughly 250 MB at int4) and
+`Qwen/Qwen2.5-Coder-0.5B-Instruct` (code-heavy pretraining, 32k context, 152k
+vocabulary, roughly 400 MB or more at int4), so the comparison measures what
+the extra download buys. The teacher is `Qwen/Qwen3-4B-Instruct-2507`: about
+2.5 GB at Q4_K_M, so it fits a 4 GB GPU, and it has no thinking mode to strip.
+All are Apache-2.0 according to their families' official repositories
+(QwenLM/Qwen3, huggingface/smollm); Hugging Face itself couldn't be reached
+from the build machine, so each licence is confirmed again on its model card
+at download time and recorded in `training/MODEL_CARD.md`. Considered and
+left for later: Granite-4.0-350M (Apache-2.0, code in its training data).
+Excluded for their licences: Gemma 3, Llama 3.2, LFM2. *Accepted.*
+
+**D43. The training toolchain is transformers 4.57 plus optimum for export.**
+The ONNX exporter (`optimum-onnx` 0.1) requires transformers below 4.58, and
+one environment should train, export and evaluate, so the training package
+pins `transformers>=4.46,<4.58`; the code also runs on transformers 5 apart
+from export. Export writes transformers.js's layout (`onnx/model.onnx` and
+`onnx/model_q4.onnx`, 4-bit MatMulNBits weights in blocks of 32, the scheme
+transformers.js calls `q4`), and the harness scores the ONNX files directly
+with onnxruntime, so quantisation loss is measured, not assumed. Training is
+a full fine-tune sized for a laptop GPU: fp32 weights with bf16 autocast (fp16
+with loss scaling on pre-Ampere GPUs), Adafactor and gradient checkpointing
+for 4 to 6 GB cards. Tests train, resume and export a tiny Llama built on the
+spot, on the CPU, so CI needs no downloads. *Accepted. Re-check when
+optimum-onnx supports transformers 5.*
