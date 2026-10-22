@@ -513,3 +513,13 @@ test showing it equals the model's own loss. Estimates: about 2.5 GB and
 3.4 GB. These are calculated, not measured; the first real run confirms them.
 LoRA was the alternative, but it changes what is being compared and adds a
 dependency. *Accepted.*
+
+**D45. ⚑ SmolLM2-135M joins Track A, for phones.** The owner wants the tutor
+to run on any basic laptop and even a mid-range phone. SmolLM2-135M-Instruct
+(Apache-2.0, roughly 100 MB at int4) gives Track A a three-point size curve
+(135M, 360M, 500M) for the comparison with Track B's from-scratch model
+(50 to 100M), and a phone-sized fallback if Track B falls short. Qwen 0.5B
+stays in the comparison but is unlikely to ship to phones. Shipped or not,
+every tutor only explains the facts the engine supplies about the learner's
+own code, and the app falls back to the card when there is no model or an
+answer fails grounding. *Accepted.*

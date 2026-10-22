@@ -11,9 +11,11 @@ Everything runs on your own machine and costs nothing (D40).
 | `infer.py` | `Tutor`: a trained model (PyTorch or ONNX) as a callable for the evaluation harness |
 | `export.py` | ONNX export plus 4-bit quantisation, in the layout transformers.js loads |
 
-The models (D42): tutors **SmolLM2-360M-Instruct** and
-**Qwen2.5-Coder-0.5B-Instruct**, compared on quality against download size;
-teacher **Qwen3-4B-Instruct-2507**. All Apache-2.0.
+The models (D42, D45): three small tutors, **SmolLM2-135M-Instruct**,
+**SmolLM2-360M-Instruct** and **Qwen2.5-Coder-0.5B-Instruct**, compared on
+quality against download size (135M is the phone-sized end); the teacher,
+**Qwen3-4B-Instruct-2507**, only writes training answers and never ships. All
+Apache-2.0.
 
 ## Runbook: your laptop, start to finish
 
@@ -80,7 +82,7 @@ python -m pymentor_pipeline draft --model qwen3-4b-instruct-2507 --split val --l
 The order is balanced across cards, so any amount is a fair sample. Leave it
 running overnight; if it stops, the same command carries on.
 
-### 6. Fine-tune both tutors
+### 6. Fine-tune the three tutors
 
 Stop the teacher first (`Ctrl+C` in its terminal): on a 4 GB GPU, training
 needs all of it. These settings are for 4 GB and are starting points, not yet
@@ -88,6 +90,12 @@ tested on a real GPU, so compare the validation loss in each run's
 `log.jsonl` and tell me how it went.
 
 ```bash
+# SmolLM2-135M: about 1.3 GB estimated, the quickest run: do it first
+python -m pymentor_training train --base HuggingFaceTB/SmolLM2-135M-Instruct \
+  --data data/generated/v1 --out training/runs/smollm2-135m \
+  --step-in-backward --grad-accum 1 --optimizer adafactor --gradient-checkpointing \
+  --batch-size 8 --lr 5e-5 --epochs 3
+
 # SmolLM2-360M: about 2.5 GB estimated
 python -m pymentor_training train --base HuggingFaceTB/SmolLM2-360M-Instruct \
   --data data/generated/v1 --out training/runs/smollm2-360m \
@@ -120,7 +128,7 @@ python -m pymentor_training evaluate --model training/runs/smollm2-360m/web \
   --onnx model_q4.onnx --name smollm2-360m-sft-q4
 ```
 
-Repeat for `qwen-coder-0.5b`. Results land in `benchmark/results/v0/`, next to
+Repeat for `smollm2-135m` and `qwen-coder-0.5b`. Results land in `benchmark/results/v0/`, next to
 the template baseline. Commit those JSON and CSV files (never the weights,
 which `.gitignore` keeps out), then fill in the hand-scoring sheets.
 
@@ -133,6 +141,7 @@ largest single tensor (the vocabulary table):
 
 | | Weights | Optimizer | Gradients | Plus | Estimate |
 | --- | --- | --- | --- | --- | --- |
+| SmolLM2-135M | 0.54 GB | ~0.05 GB | 0.11 GB | CUDA ~0.4 GB, activations | ~1.3 GB |
 | SmolLM2-360M | 1.45 GB | ~0.15 GB | 0.19 GB | CUDA ~0.4 GB, activations | ~2.5 GB |
 | Qwen2.5-Coder-0.5B | 1.98 GB | ~0.2 GB | 0.54 GB | CUDA ~0.4 GB, activations | ~3.4 GB |
 
