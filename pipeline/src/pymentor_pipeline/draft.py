@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import random
+import time
 from collections import Counter
 from collections.abc import Callable, Iterable
 from pathlib import Path
@@ -107,6 +108,7 @@ def draft(
     done = {(r["case"], r["task"]) for r in _rows(accepted_path) + _rows(rejected_path)}
     system = system_prompt()
     tally: Counter[str] = Counter()
+    started = time.monotonic()
     todo = [e for e in read_jsonl(data / f"examples-{split}.jsonl") if _key(e) not in done]
     for example in balanced(todo)[:limit]:
         item = _item(cases[example["case"]], example)
@@ -121,10 +123,18 @@ def draft(
             _append(
                 accepted_path, row | {"prompt": example["prompt"], "target": prompt.target(text)}
             )
-        if sum(tally.values()) % 500 == 0:
-            log(f"  {dict(tally)}")
-    log(f"{split}: {dict(tally)} ({len(todo) - sum(tally.values())} left)")
+        done_now = sum(tally.values())
+        if done_now % 100 == 0:
+            log(f"  {dict(tally)}, {_pace(started, done_now)}")
+    done_now = sum(tally.values())
+    left = len(todo) - done_now
+    log(f"{split}: {dict(tally)}, {_pace(started, done_now)} ({left} left)")
     return tally
+
+
+def _pace(started: float, count: int) -> str:
+    seconds = time.monotonic() - started
+    return f"{seconds / max(count, 1):.1f} s per answer" if count else "no answers yet"
 
 
 def accept_outputs(

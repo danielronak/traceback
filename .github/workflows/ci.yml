@@ -58,6 +58,24 @@ jobs:
         # A tiny model built on the spot: trains, resumes, exports to ONNX, scores.
         run: pytest training
 
+  windows:
+    # The owner trains on a Windows laptop (D46): the same tests, on Windows.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e "engine[dev]" -e pipeline -e "training[dev]"
+      - name: Test
+        run: |
+          pytest engine
+          pytest pipeline
+          pytest training
+
   app:
     runs-on: ubuntu-latest
     defaults:
