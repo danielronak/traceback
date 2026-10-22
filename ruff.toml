@@ -18,6 +18,7 @@ select = [
 # Test snippets intentionally contain beginner mistakes inside strings.
 "engine/tests/**" = ["E501"]
 "pipeline/tests/**" = ["E501"]
+"training/tests/**" = ["E501"]
 
 [lint.isort]
-known-first-party = ["pymentor", "pymentor_pipeline"]
+known-first-party = ["pymentor", "pymentor_pipeline", "pymentor_training"]

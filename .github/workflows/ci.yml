@@ -42,6 +42,22 @@ jobs:
         # Includes the frozen benchmark's checksum test and the harness.
         run: pytest pipeline
 
+  training:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install
+        # The CPU build of PyTorch is a fraction of the default download.
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e engine -e pipeline -e "training[dev]"
+      - name: Test
+        # A tiny model built on the spot: trains, resumes, exports to ONNX, scores.
+        run: pytest training
+
   app:
     runs-on: ubuntu-latest
     defaults:
