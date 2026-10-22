@@ -20,7 +20,7 @@ examples = [
 
 [card.quiz]
 question = "Which variable name follows Python's style?"
-choices = ["TotalScore", "totalScore", "total_score"]
+choices = ["`TotalScore`", "`totalScore`", "`total_score`"]
 answer = 2
 explain = "Python variables use lowercase words joined by underscores (snake_case)."
 
@@ -105,4 +105,20 @@ fix = "drop_bool_compare"
 examples = [
   { source = "done = False\nif done == True:\n    print(\"finished\")\n", after = "if done:" },
   { source = "done = False\nif done == False:\n    print(\"keep going\")\n", after = "if not done:" },
+]
+
+[[card]]
+id = "fstring-missing-f"
+title = "Did you mean an f-string? `{{{name}}}` will print as it is"
+match = { code = "fstring-missing-f" }
+rule = "To put a variable's value into text, start the string with `f`: `f\"Hello {{name}}\"`. Without the `f`, the curly brackets are printed as ordinary characters."
+why = "Python only looks inside curly brackets in an f-string. Your code runs, but it will show `{{{name}}}` itself instead of the value of `{name}`."
+hints = [
+  "Look at the text on line {line}. What do you expect it to show?",
+  "The curly brackets only work in a string that starts with `f`.",
+  "Put an `f` just before the opening quote.",
+]
+fix = "add_f_prefix"
+examples = [
+  { source = "name = 'Ada'\nprint('Hello {name}!')\n", after = "print(f'Hello {name}!')" },
 ]

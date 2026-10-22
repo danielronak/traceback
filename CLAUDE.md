@@ -39,7 +39,7 @@ engine/      Python package `pymentor`: the shared core. Standard library only.
   src/pymentor/        engine modules (see docs/architecture.md for each)
   src/pymentor/cards/  the rule-card library (TOML), one file per topic
   tests/               test_cards.py self-tests every card from its examples
-curriculum/  course content: exercises/NN-id.toml (lessons come in M4)
+curriculum/  course content: course.toml, lessons/NN-id.md, exercises/NN-id.toml
 app/         web app: Vite + TS + Preact + CodeMirror, Pyodide in a worker
 training/    model training (M6/M7, not started)
 benchmark/   frozen evaluation sets (M5, not started)
@@ -146,6 +146,26 @@ tests = [
 pass with **no findings at all** (it's the model answer), and the starter must
 compile, fail, and get a rule card as its first finding. A "fix the bug"
 starter should aim at a specific card.
+
+## Lessons
+
+Lessons live in `curriculum/lessons/NN-id.md` and must be listed in
+`curriculum/course.toml`, where every lesson and exercise appears exactly once.
+A lesson starts with front matter:
+
+```markdown
++++
+id = "decisions"
+title = "Making decisions with if"
+teaches = ["missing-colon", "assign-in-condition"]   # rule-card ids
++++
+```
+
+Fenced `python` blocks are runnable snippets. Write ```` ```python broken=missing-colon ````
+for a deliberate mistake, and `inputs=Ada|14` for answers to `input()`. CI
+checks that ordinary snippets run with no findings, and that each broken one
+is taught first by exactly the card it names, which must be in `teaches`.
+Use `##` for sections (the lesson title is the heading above them).
 
 ## Testing
 

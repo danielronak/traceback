@@ -3,8 +3,8 @@
 [[card]]
 id = "input-is-string"
 title = "`{input_name}` holds text from `input()`, not a number"
-match = { code = "TypeError", message = "^(can only concatenate str|unsupported operand type)", when = { input_name = true } }
-rule = "`input()` always gives back text (a `str`), even when the user types digits. Convert it with `int()` or `float()` before doing maths with it."
+match = { code = "TypeError", message = "^(can only concatenate str|unsupported operand type|'.+' not supported between)", when = { input_name = true } }
+rule = "`input()` always gives back text (a `str`), even when the user types digits. Convert it with `int()` or `float()` before doing maths with it or comparing it with numbers."
 why = "Python can't know what the user will type: `42`, `forty-two`, or nothing at all. So `input()` returns exactly the characters typed and leaves it to you to say whether they should be a number."
 hints = [
   "Where does `{input_name}` get its value? Look at line {input_line}.",
@@ -16,6 +16,7 @@ related = ["str-plus-int", "int-conversion"]
 examples = [
   { source = "age = input(\"Age? \")\nprint(age + 1)\n", inputs = ["14"], after = "age = int(input(\"Age? \"))" },
   { source = "n = input()\ntotal = 10 * 2 + n\n", inputs = ["3"], after = "n = int(input())" },
+  { source = "age = input()\nif age >= 18:\n    print('adult')\n", inputs = ["20"], after = "age = int(input())" },
 ]
 
 [card.quiz]
@@ -128,7 +129,7 @@ examples = [
 
 [card.quiz]
 question = "How do you repeat something 5 times with a for loop?"
-choices = ["for i in 5:", "for i in range(5):", "for 5 times:"]
+choices = ["`for i in 5:`", "`for i in range(5):`", "`for 5 times:`"]
 answer = 1
 explain = "A for loop goes through a sequence. range(5) gives the numbers 0 to 4."
 
@@ -193,4 +194,115 @@ related = ["input-is-string"]
 examples = [
   { source = "age = int(\"twelve\")\n" },
   { source = "n = int(input(\"Number: \"))\n", inputs = [""] },
+]
+
+[[card]]
+id = "too-many-arguments"
+title = "`{function}()` was given {given} values but takes {takes}"
+match = { code = "TypeError", message = "takes \\d+ positional arguments? but \\d+ (was|were) given" }
+rule = "A function takes as many values as it has parameters in its `def` line."
+why = "Python matches each value in the call to a parameter, in order. `{function}()` has room for {takes}, but the call gives it {given}, and Python won't guess what to do with the extra ones."
+hints = [
+  "Look at the `def` line of `{function}`. How many parameters does it have?",
+  "Count the values in the call on line {line}.",
+  "Remove the extra values from the call, or add parameters to the `def` line.",
+]
+related = ["missing-argument"]
+examples = [
+  { source = "def greet(name):\n    print('Hi', name)\n\ngreet('Ada', 'Sam')\n" },
+]
+
+[[card]]
+id = "none-in-calculation"
+title = "A `None` got into a calculation on line {line}"
+match = { code = "TypeError", when = { none_operand = true } }
+priority = 5
+rule = "`None` means \"no value\", so it can't be added, multiplied or compared. It usually comes from a function that has no `return`."
+why = "Every function gives back a value, and one that ends without `return` gives back `None`. Using that result in a calculation fails here, on the first line that relies on it."
+hints = [
+  "Which value in the calculation on line {line} is `None`?",
+  "If it comes from calling a function, does that function `return` anything?",
+  "Make the function end with `return` and the value it works out.",
+]
+related = ["missing-return", "none-attribute"]
+examples = [
+  { source = "def double(n):\n    print(n * 2)\n\nresult = double(4) + 1\n" },
+]
+
+[[card]]
+id = "none-not-subscriptable"
+title = "`None` has no items to pick with `[ ]`"
+match = { code = "TypeError", message = "^'NoneType' object is not subscriptable" }
+priority = 5
+rule = "A variable is `None` when it was given the result of something that returns nothing, such as `.sort()` or a function without `return`."
+why = "`[ ]` asks a value for one of its items, and `None` has none. Usually the variable was meant to hold a list, but got `None` from an in-place method or a function that only prints."
+hints = [
+  "Where does the value before `[` on line {line} come from?",
+  "Methods like `.sort()` change a list and give back `None`; functions without `return` give back `None` too.",
+  "Keep using the original list after `.sort()`, or make the function `return` its result.",
+]
+related = ["none-from-inplace-method"]
+examples = [
+  { source = "numbers = [3, 1, 2]\nordered = numbers.sort()\nprint(ordered[0])\n" },
+]
+
+[[card]]
+id = "len-of-number"
+title = "`len()` can't measure a `{obj_type}`"
+match = { code = "TypeError", message = "^object of type '\\w+' has no len\\(\\)" }
+rule = "`len()` counts the items in something that holds items: a string, list, tuple or dictionary. A single number has no length."
+why = "`len(\"hello\")` is 5 because the text has 5 characters, but a number isn't a sequence of anything, so there's nothing to count. To count a number's digits, turn it into text first: `len(str(n))`."
+hints = [
+  "What value is given to `len()` on line {line}?",
+  "It's a `{obj_type}`, which doesn't contain items.",
+  "Did you mean to measure a list or text instead? For digits, use `len(str(...))`.",
+]
+examples = [
+  { source = "year = 2024\nprint(len(year))\n" },
+]
+
+[[card]]
+id = "list-index-not-int"
+title = "A list position must be a whole number, not a `{index_type}`"
+match = { code = "TypeError", message = "^list indices must be integers or slices" }
+rule = "List items are picked by a whole-number position: `items[0]`, `items[2]`. Text like `\"0\"` isn't a position, even if it looks like one."
+why = "A list is numbered 0, 1, 2 and so on, so Python needs an `int` to know which item you mean. A position from `input()` is text, so convert it with `int()` first."
+hints = [
+  "What is inside the `[ ]` on line {line}?",
+  "It's a `{index_type}`, but list positions are whole numbers.",
+  "Convert it with `int(...)`, or use a dictionary if you want to look things up by name.",
+]
+examples = [
+  { source = "items = ['a', 'b']\nprint(items['1'])\n" },
+]
+
+[[card]]
+id = "sequence-times-float"
+title = "Text or a list can only be repeated a whole number of times"
+match = { code = "TypeError", message = "^can't multiply sequence by non-int" }
+rule = "`*` with text or a list repeats it: `\"ab\" * 3` is `\"ababab\"`. The number of repeats must be a whole number (an `int`)."
+why = "You can't repeat something two and a half times, so Python refuses a `{factor_type}`. Often one side was meant to be a number but is still text, for example straight from `input()`."
+hints = [
+  "What types are the two sides of the `*` on line {line}?",
+  "One side is text or a list. Was it meant to be a number?",
+  "Convert the text with `float(...)` or `int(...)` before multiplying.",
+]
+examples = [
+  { source = "price = '2.50'\nprint(price * 1.5)\n" },
+]
+
+[[card]]
+id = "unpack-mismatch"
+title = "The number of names doesn't match the number of values"
+match = { code = "ValueError", when = { unpack = true } }
+rule = "`a, b = values` gives each name one value, so there must be exactly as many names on the left as values on the right."
+why = "Python unpacks the values in order, one per name. With {unpack} values for {names} names, some name would be left without a value, or a value without a name, and Python won't guess which."
+hints = [
+  "How many names are on the left of the `=` on line {line}?",
+  "How many values does the right side hold?",
+  "Make the counts match, or use `items[0]`, `items[1]`… to pick values one at a time.",
+]
+examples = [
+  { source = "first, second = [1, 2, 3]\n" },
+  { source = "a, b, c = 'hi'\n" },
 ]

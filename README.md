@@ -19,9 +19,9 @@ current milestone.
 
 | Part | Directory | Status |
 | --- | --- | --- |
-| Correction engine and 63 rule cards | [`engine/`](engine/) | Working (M1 done) |
-| Exercises and logic errors | [`curriculum/`](curriculum/) | 18 exercises (M2 done) |
-| Web app (offline, installable) | [`app/`](app/) | Core loop working (M3 done) |
+| Correction engine and 80 rule cards | [`engine/`](engine/) | Working |
+| Course: 9 lessons, 18 exercises | [`curriculum/`](curriculum/) | Working (M4) |
+| Web app (offline, installable) | [`app/`](app/) | Working; [deploy guide](docs/deploy.md) |
 | Tutor model training | `training/` | Planned (M6, M7) |
 | VS Code extension | `extension/` | Planned (M9) |
 

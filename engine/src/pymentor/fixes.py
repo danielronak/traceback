@@ -223,6 +223,28 @@ def print_call(ctx: FixContext) -> list[str]:
     return [replace_line(ctx.source, ctx.diagnostic.line, f"{match[1]}print({match[2]}){comment}")]
 
 
+@generator
+def def_brackets(ctx: FixContext) -> list[str]:
+    """def greet:  ->  def greet():"""
+    code, comment = _split_comment(ctx.line)
+    match = re.match(r"^(\s*(?:async\s+)?def\s+\w+)\s*:$", code.rstrip())
+    if not match:
+        return []
+    return [replace_line(ctx.source, ctx.diagnostic.line, f"{match[1]}():{comment}")]
+
+
+@generator
+def fix_keyword(ctx: FixContext) -> list[str]:
+    """whlie True:  ->  while True:"""
+    word, right = ctx.features["keyword"], ctx.features["keyword_typo"]
+    match = re.match(rf"^(\s*){re.escape(word)}\b", ctx.line)
+    if not right or not match:
+        return []
+    return [
+        replace_line(ctx.source, ctx.diagnostic.line, match[1] + right + ctx.line[match.end() :])
+    ]
+
+
 # --- name and attribute fixes -------------------------------------------------
 
 
@@ -460,6 +482,15 @@ def drop_bool_compare(ctx: FixContext) -> list[str]:
     simple = isinstance(node.left, ast.Name | ast.Attribute | ast.Call | ast.Subscript)
     new = left if positive else f"not {left}" if simple else f"not ({left})"
     return [replace_span(ctx.source, node.lineno, node.col_offset, node.end_col_offset, new)]
+
+
+@generator
+def add_f_prefix(ctx: FixContext) -> list[str]:
+    """'Hello {name}'  ->  f'Hello {name}'"""
+    d = ctx.diagnostic
+    if ctx.line[d.col : d.col + 1] not in ("'", '"', "r", "R"):
+        return []
+    return [replace_span(ctx.source, d.line, d.col, d.col, "f")]
 
 
 # --- helpers -----------------------------------------------------------------------

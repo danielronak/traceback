@@ -22,7 +22,7 @@ examples = [
 
 [card.quiz]
 question = "A test checks what `double(4)` gives back. Which line inside the function does that?"
-choices = ["print(n * 2)", "return n * 2", "n * 2"]
+choices = ["`print(n * 2)`", "`return n * 2`", "`n * 2`"]
 answer = 1
 explain = "return hands the value back to the caller. print only shows it on the screen."
 
@@ -82,7 +82,7 @@ examples = [
 
 [card.quiz]
 question = "Which numbers does `range(1, 5)` give?"
-choices = ["1, 2, 3, 4", "1, 2, 3, 4, 5", "0, 1, 2, 3, 4"]
+choices = ["`1, 2, 3, 4`", "`1, 2, 3, 4, 5`", "`0, 1, 2, 3, 4`"]
 answer = 0
 explain = "range stops just before the second number. That's the usual source of off-by-one mistakes."
 
@@ -152,7 +152,7 @@ examples = [
 
 [card.quiz]
 question = "What is `\"3\" + \"4\"`?"
-choices = ["7", "\"34\"", "An error"]
+choices = ["`7`", "`\"34\"`", "`An error`"]
 answer = 1
 explain = "`+` joins two pieces of text end to end. To add numbers, convert the text with int() first."
 

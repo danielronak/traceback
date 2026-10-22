@@ -18,7 +18,7 @@ examples = [
 
 [card.quiz]
 question = "A list has 3 items. What is the index of the last one?"
-choices = ["3", "2", "-3"]
+choices = ["`3`", "`2`", "`-3`"]
 answer = 1
 explain = "Indexes start at 0, so the last index is one less than the length (or simply -1)."
 
@@ -39,7 +39,7 @@ examples = [
 
 [card.quiz]
 question = "`ages = {\"Ada\": 36}`. Which line is safe if \"Zoe\" might be missing?"
-choices = ["ages[\"Zoe\"]", "ages.get(\"Zoe\", 0)", "ages(\"Zoe\")"]
+choices = ["`ages[\"Zoe\"]`", "`ages.get(\"Zoe\", 0)`", "`ages(\"Zoe\")`"]
 answer = 1
 explain = ".get() gives back a default instead of stopping with a KeyError."
 
@@ -111,4 +111,34 @@ hints = [
 ]
 examples = [
   { source = "items = [1, 2]\nitems.push(3)\n" },
+]
+
+[[card]]
+id = "pop-empty-list"
+title = "There's nothing left in the list to take"
+match = { code = "IndexError", message = "^pop from empty list" }
+rule = "`.pop()` removes and gives back the last item of a list, so the list must have at least one item."
+why = "An empty list has no last item to give back. Often a loop keeps popping after the list has run out; checking `if items:` first (an empty list counts as false) avoids it."
+hints = [
+  "How many items does the list have when line {line} runs?",
+  "An empty list has nothing to pop.",
+  "Check first with `if items:`, or loop `while items:`.",
+]
+examples = [
+  { source = "stack = []\nstack.pop()\n" },
+]
+
+[[card]]
+id = "remove-missing-item"
+title = "That item isn't in the list, so it can't be removed"
+match = { code = "ValueError", message = "^list.remove\\(x\\): x not in list" }
+rule = "`.remove(item)` deletes the first matching item, so the item must be in the list. Check with `if item in items:` first."
+why = "Python won't silently do nothing, because a missing item usually means a typo or a value you didn't expect, and you'd want to know."
+hints = [
+  "What's being removed on line {line}, and what does the list hold at that point?",
+  "Check spelling and type: `\"3\"` and `3` are different items.",
+  "Use `if item in items:` before removing it.",
+]
+examples = [
+  { source = "names = ['Ada', 'Sam']\nnames.remove('Bo')\n" },
 ]

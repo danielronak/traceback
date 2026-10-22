@@ -29,7 +29,7 @@ open questions.
 | Languages at launch | English. Card text is kept in plain fields so it can be translated, with Hindi as the first candidate. | M8 |
 | Base model for Track A | Shortlisted at build time: ≤500M parameters, permissive licence, code in its pretraining data | M6 |
 | Final name | "PyMentor" is a working title. The package is `pymentor`, and renaming it is a find-and-replace. | Before the first public release |
-| First ~100 cards | Start with 51 cards covering common beginner errors (done in M1), then rank the rest by the Phase 1 error log | M4 |
+| First ~100 cards | 80 cards so far (M1, M2, M4), then rank the rest by the Phase 1 error log | M4 |
 | Licence and open source | None yet, so all rights are reserved until decided. Recommended: MIT for code, CC BY 4.0 for cards and curriculum. | Before the first public release |
 | Training hardware | Laptop RTX 3050 (4 GB) for development and fine-tuning. A rented 24 GB GPU for a day of Track B pretraining. | M7 |
 | Hosting | Cloudflare Pages: static, free, and allows the custom headers cross-origin isolation needs | M3 |
@@ -169,17 +169,32 @@ budgets are measured on a desktop CPU slowed down, not on a real Chromebook.
 
 ## M4: Learning content and teaching behaviours (Phase 1 ships)
 
-- [ ] Course structure: lessons (Markdown with runnable snippets) and
-      exercises, ordered into a beginner course, plus a study-plan view
-- [ ] Progress and mistake history in IndexedDB, local only
-- [ ] Repetition becomes practice: after the same card N times, quiz the rule
-      (quiz questions are stored on the card)
-- [ ] "Try first" as the default, and hint-ladder state per finding
-- [ ] Unknown-error log: errors with no card, stored locally. The learner can
-      export it deliberately (opt-in).
-- [ ] "Report this explanation" (local, exportable)
-- [ ] Grow the card library towards ~100, ranked by the error log
-- [ ] Deploy to Cloudflare Pages and get the first real learners
+- [x] Course structure: `curriculum/course.toml` orders 6 units of 9 lessons
+      and 18 exercises. Lessons are Markdown with runnable snippets, and
+      deliberate-mistake snippets are checked against the card they name (D31).
+      Course mode is the landing page, with an overview as the study plan:
+      progress, Continue, and lessons worth revisiting (D32).
+- [x] Progress and mistake history in IndexedDB, local only. Mistakes count
+      from deliberate runs only, and once while they stay on screen (D33).
+- [x] Repetition becomes practice: once a card has come up 3 times since its
+      last quiz, it asks its question first. 24 cards have quizzes (D34).
+- [x] "Try first" as the default (M3, D29), plus a teacher setting to show
+      fixes straight away
+- [x] Unknown-error log: errors with no card, stored locally, downloadable from
+      Settings, with code left out unless ticked (D35)
+- [x] "Report this explanation", stored locally and in the same download
+- [x] Grow the card library: 80 cards now (17 new, plus comparisons added to
+      `input-is-string`), chosen from the next most common beginner errors.
+      Ranking the next ones needs the error log from real learners.
+- [x] Keyboard tip for leaving the editor (Escape, then Tab), under the editor
+      and in Settings
+- [x] Deployment guide: `docs/deploy.md` (Cloudflare Pages, plus other hosts)
+- [ ] **Deploy to Cloudflare Pages.** This needs the project owner's account;
+      follow `docs/deploy.md`.
+- [ ] **Get the first real learners**, and check the budgets on a real
+      low-end Chromebook (M3 measured a desktop CPU slowed down)
+- [ ] Review the lesson and card text by hand. It's the source of truth
+      learners see.
 
 **Gate to Phase 2:** real learners are using it, and the error log shows which
 cards matter.

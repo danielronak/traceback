@@ -46,7 +46,7 @@ examples = [
 
 [card.quiz]
 question = "Which of these calls Python's print function?"
-choices = ["Print(\"hi\")", "pritn(\"hi\")", "print(\"hi\")"]
+choices = ["`Print(\"hi\")`", "`pritn(\"hi\")`", "`print(\"hi\")`"]
 answer = 2
 explain = "Built-in names like print are spelled exactly and in lowercase."
 
@@ -132,7 +132,7 @@ examples = [
 
 [card.quiz]
 question = "Which line shows the word hello on screen?"
-choices = ["print(hello)", "print(\"hello\")", "print[hello]"]
+choices = ["`print(hello)`", "`print(\"hello\")`", "`print[hello]`"]
 answer = 1
 explain = "Text goes inside quote marks. Without them, Python reads hello as the name of a variable."
 

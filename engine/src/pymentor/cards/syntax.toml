@@ -23,7 +23,7 @@ examples = [
 
 [card.quiz]
 question = "Which of these lines is written correctly?"
-choices = ["if score > 50", "if score > 50:", "if: score > 50"]
+choices = ["`if score > 50`", "`if score > 50:`", "`if: score > 50`"]
 answer = 1
 explain = "A line that starts a block (if, for, while, def, ...) ends with a colon. The colon tells Python an indented block comes next."
 
@@ -149,7 +149,7 @@ examples = [
 
 [card.quiz]
 question = "Which of these is a complete piece of text (a string)?"
-choices = ["'hello", "\"hello'", "\"hello\""]
+choices = ["`'hello`", "`\"hello'`", "`\"hello\"`"]
 answer = 2
 explain = "A string starts and ends with the same kind of quote mark."
 
@@ -173,7 +173,7 @@ examples = [
 
 [card.quiz]
 question = "Which line has balanced brackets?"
-choices = ["print(len(word)", "print(len(word))", "print(len(word)))"]
+choices = ["`print(len(word)`", "`print(len(word))`", "`print(len(word)))`"]
 answer = 1
 explain = "Every opening bracket needs exactly one matching closing bracket."
 
@@ -256,4 +256,102 @@ hints = [
 ]
 examples = [
   { source = "class = \"Year 9\"\nprint(class)\n" },
+]
+
+[[card]]
+id = "keyword-typo"
+title = "`{keyword}` should probably be `{keyword_typo}`"
+match = { code = "SyntaxError", message = "^invalid syntax$", when = { keyword_typo = true } }
+priority = 5
+rule = "Python's keywords, like `if`, `while`, `for`, `def` and `return`, must be spelled exactly, in lowercase."
+why = "Python recognises a keyword only by its exact spelling. `{keyword}` is just an unknown word to it, so the rest of line {line} stops making sense as a statement."
+hints = [
+  "Look at the first word on line {line}.",
+  "Is it one of Python's keywords, spelled slightly wrong or with a capital letter?",
+  "Change `{keyword}` to `{keyword_typo}`.",
+]
+fix = "fix_keyword"
+examples = [
+  { source = "whlie True:\n    break\n", after = "while True:" },
+  { source = "x = 3\nIf x > 2:\n    print(x)\n", after = "if x > 2:" },
+]
+
+[[card]]
+id = "else-without-if"
+title = "This `{keyword}` has no `if` to belong to"
+match = { code = "SyntaxError", message = "^invalid syntax$", when = { orphan_else = true } }
+priority = 5
+rule = "`else` and `elif` continue an `if`, so they must come straight after its block, lined up with the `if`."
+why = "Python pairs an `else` with the `if` above it at the same indentation. On line {line} there's none: either the `if` is missing, or a line in between (often one that isn't indented) has ended the `if` block."
+hints = [
+  "Which `if` is this `{keyword}` meant to belong to?",
+  "Is every line between that `if` and line {line} indented inside the `if`?",
+  "Line up `{keyword}` with its `if`, and indent the lines between them.",
+]
+related = ["indent-expected", "missing-colon"]
+examples = [
+  { source = "x = 1\nif x > 0:\n    print('positive')\nprint('checked')\nelse:\n    print('not positive')\n" },
+]
+
+[[card]]
+id = "return-outside-function"
+title = "`return` can only be used inside a function"
+match = { code = "SyntaxError", message = "^'return' outside function" }
+rule = "`return` ends a function and hands back a value, so it only makes sense inside a `def` block."
+why = "Outside a function there's nothing to return from and no caller to give the value to. Often this means the `return` line isn't indented enough, so Python thinks the function has already ended."
+hints = [
+  "Which function is the `return` on line {line} meant to be part of?",
+  "Is line {line} indented as far as the other lines inside that function?",
+  "Indent the `return` to line up with the function's other lines, or use `print()` to show a value.",
+]
+examples = [
+  { source = "def double(n):\n    answer = n * 2\nreturn answer\n" },
+]
+
+[[card]]
+id = "break-outside-loop"
+title = "`{keyword}` can only be used inside a loop"
+match = { code = "SyntaxError", message = "^'(break' outside loop|continue' not properly in loop)" }
+rule = "`break` (stop the loop) and `continue` (skip to the next repeat) only make sense inside a `for` or `while` loop."
+why = "These words control a loop, so outside one Python has nothing for them to act on. Usually the line isn't indented enough to be inside the loop."
+hints = [
+  "Which loop is the `{keyword}` on line {line} meant to control?",
+  "Is line {line} indented inside that loop?",
+  "Indent the `{keyword}` into the loop, or remove it.",
+]
+examples = [
+  { source = "for n in range(10):\n    print(n)\nbreak\n" },
+]
+
+[[card]]
+id = "def-missing-brackets"
+title = "A `def` line needs round brackets after the name"
+match = { code = "SyntaxError", message = "^expected '\\('$", when = { keyword = "def" } }
+rule = "A function definition always has round brackets after its name, even when it takes no values: `def greet():`."
+why = "The brackets are where a function's parameters go. Python requires them so a definition always has the same shape, and so `greet()` (calling it) and `def greet():` (defining it) visibly match."
+hints = [
+  "Look at what comes straight after the function's name on line {line}.",
+  "Every `def` line has round brackets, even if they're empty.",
+  "Add `()` after the function's name, before the colon.",
+]
+fix = "def_brackets"
+examples = [
+  { source = "def greet:\n    print('hi')\n\ngreet()\n", after = "def greet():" },
+]
+
+[[card]]
+id = "assign-to-non-name"
+title = "Only a variable name can go on the left of `=`"
+match = { code = "SyntaxError", message = "^cannot assign to (literal|function call|expression)" }
+rule = "`=` stores the value on its right under the name on its left, so the left side must be a variable name, like `total = 5`."
+why = "Line {line} has a {assign_target} on the left of `=`, and Python can't store a value in that. Either the two sides are the wrong way round, or `==` (comparing) was meant instead of `=` (storing)."
+hints = [
+  "What is on the left of the `=` on line {line}?",
+  "The name you're storing into goes on the left: `name = value`.",
+  "Swap the two sides, or use `==` if you meant to compare.",
+]
+related = ["assign-in-condition"]
+examples = [
+  { source = "5 = count\n" },
+  { source = "x = 2\nx + 1 = 3\n" },
 ]

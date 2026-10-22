@@ -31,14 +31,18 @@ engine/        Python package `pymentor`, the shared core. Standard library only
     prompt.py      the model input format (M5), shared by training and inference
     grounding.py   the faithfulness checker for model output (M5)
     exercises.py   exercise format, loader and test runner
-    selfcheck.py   card and curriculum checks, run under pytest and inside Pyodide
+    course.py      the course: units, lessons (Markdown + snippets) and exercises
+    selfcheck.py   card, exercise and course checks, run under pytest and inside Pyodide
     data/          bug injection and the training-data generator (M5)
   tests/
-curriculum/    Course content: exercises/*.toml now, lessons in M4
+curriculum/    Course content: course.toml, lessons/*.md, exercises/*.toml
 app/           Web app: Vite + TypeScript + Preact, CodeMirror 6, Pyodide in a Web Worker
   src/engine/    worker (Pyodide + engine), client (input, Stop, watchdog), types
   src/editor/    CodeMirror setup and position mapping
-  src/cards/     correction cards and the hint ladder
+  src/cards/     correction cards, the hint ladder, quizzes and reports
+  src/course/    course navigation, overview (study plan) and lesson reader
+  src/progress/  progress and feedback in IndexedDB, as pure update functions
+  src/settings/  the settings dialog
   src/sw.template.js  the service worker, filled in at build time
 training/      Model training (M6, M7): tokenizer, pretraining, SFT, export. PyTorch.
 benchmark/     Frozen, versioned evaluation sets (M5)
@@ -344,3 +348,48 @@ send a message per write and re-render per message, freezing the page. The
 worker flushes every 50 ms or 4 KB (and before `input()` waits, and at the
 end), and the page renders at most once per frame, flushing when a run
 finishes so the last output always precedes the closing note. *Accepted.*
+
+**D31. Lessons are Markdown with checked snippets.** A lesson file starts
+with TOML front matter (`id`, `title`, `teaches`). Its fenced `python` blocks
+become runnable snippets, and a fence can say `inputs=a|b` or
+`broken=card-id`. The engine splits a lesson into Markdown and snippet parts,
+so the app never parses fences. CI runs every snippet: ordinary ones must run
+with no findings at all, and each broken one must be taught first by exactly
+the card it names, which the lesson must list in `teaches`. Lesson
+explanations and the engine therefore can't drift apart. *Accepted.*
+
+**D32. ⚑ One Course mode instead of separate Exercises.** The design doc lists
+lessons, courses and study plans; M3 had a flat exercise list. Course mode is
+now the landing page: a sidebar of units with ticks, lessons and exercises in
+order, and an overview as the study plan. The overview has Continue, plus
+"Practise your weak spots", which ranks lessons by how often the learner has
+hit the cards they teach. The playground stays for free experimenting.
+*Accepted.*
+
+**D33. Mistakes are counted from deliberate runs, once while on screen.**
+Live checks run while typing, and a half-typed `if x` isn't a mistake yet, so
+only Run and Run tests count. A mistake that stays from one run to the next
+(same card, line and message) counts once: re-running unchanged code isn't
+repeating a mistake. Make it, fix it, make it again, and it counts twice.
+*Accepted.*
+
+**D34. Quizzes hide the rule until answered.** A quiz that shows the rule
+alongside it tests reading, not memory. When practice is due, the card shows
+only its title and the question; a wrong choice is greyed out with a nudge
+rather than the answer, and the right one reveals the explanation, the rule,
+hints and fix, and resets the count. Lesson snippets never quiz: their
+mistakes are examples, not the learner's. Quiz text isn't templated, because
+a quiz is about the rule, not this code. *Accepted.*
+
+**D35. Feedback is local until the learner downloads it, without their code
+by default.** Errors with no card and reported explanations are kept in
+IndexedDB (de-duplicated, capped at 200 each). Settings shows the counts and
+offers a JSON download. The line of code involved is left out unless the
+learner ticks a box, because learner code can be personal. Nothing is ever
+sent automatically; there is no telemetry. *Accepted.*
+
+**D36. Some silent bugs are caught as style.** `print("Hello {name}")` runs
+without error but prints the braces. When a plain string contains
+`{variable}` for a variable the program defines (and isn't a docstring or
+used with `.format`), the engine reports `fstring-missing-f` with a verified
+fix that adds the `f`. *Accepted.*

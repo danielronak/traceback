@@ -59,3 +59,15 @@ def test_to_cap_words():
 
 def test_shadowed_builtins_are_real_builtins():
     assert set(dir(builtins)) >= SHADOWED_BUILTINS
+
+
+def test_missing_f_prefix_only_where_a_variable_was_clearly_meant():
+    source = (
+        '"""Module docstring with {name}."""\n'
+        "name = 'Ada'\n"
+        "print('Hello {name}')\n"  # flagged
+        "print(f'Hello {name}')\n"  # already an f-string
+        "print('Hello {name}'.format(name=name))\n"  # .format fills it in
+        "print('{unknown} and {0}')\n"  # not a variable this program defines
+    )
+    assert codes(source) == [("fstring-missing-f", 3)]
