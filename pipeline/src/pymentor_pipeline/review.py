@@ -89,6 +89,12 @@ def report(data: Path, split: str, *, per_reason: int = 3, show: Callable[[str],
     reasons = Counter(x.split(":")[0] for r in rejected for x in r["reasons"])
     show(f"rejection reasons: {reasons.most_common()}")
     show(f"review so far: {summary(data, split)}")
+    targets = {(r["case"], r["task"]): r["target"] for r in accepted}
+    for verdict in rows("reviews"):
+        if verdict["verdict"] == "bad":
+            show(f"\n=== REVIEWED BAD {verdict['task']}: {verdict['note'] or '(no note)'}")
+            answer = targets.get((verdict["case"], verdict["task"]), "")
+            show(f">>> {answer.removesuffix('<|end|>')}")
     for reason, _ in reasons.most_common():
         examples = [r for r in rejected if any(x.startswith(reason) for x in r["reasons"])]
         for row in examples[:per_reason]:
