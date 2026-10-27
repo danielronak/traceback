@@ -36,13 +36,17 @@ from .records import finding_from_record
 
 Teacher = Callable[[str, str], str | None]  # (system, prompt) -> text, or None if declined
 
+CODE_TASKS = ("explain", "hint_level_3")  # the prompts that carry the <|fix|> section
+
 TASK_GUIDE = {
-    "explain": "Explain the error to the learner, using their own code and names. You may end "
-    "with the fix from <|fix|> in a ```python block.",
-    "hint_level_1": "A gentle nudge towards where to look. Don't say what to change.",
-    "hint_level_2": "A clearer hint about what is wrong. Still don't show the fixed code.",
-    "hint_level_3": "A near-answer: say what to change. You may show the fixed line(s) from "
-    "<|fix|> in a ```python block.",
+    "explain": "Explain the error using the learner's own code and names: what Python "
+    "objected to, and the rule behind it. You may end with the corrected code.",
+    "hint_level_1": "A gentle nudge: point to where to look (the line, or the part of the "
+    "line) and ask a question about it. Don't say what is wrong or what to change.",
+    "hint_level_2": "A clearer hint: name the idea that is wrong (for example, that a block "
+    "header ends with a colon, or that text and numbers are different types), using the "
+    "card's hint. Don't spell out the edit, and don't show code.",
+    "hint_level_3": "A near-answer: say exactly what to change. You may show the corrected code.",
     "why_followup": "Answer the learner's <|question|> using the card's reason, about their code.",
     "review": "Gently review working code.",
     "logic_error": "Explain why the code gives the wrong answer for the failing test.",
@@ -52,18 +56,25 @@ SYSTEM = """You write the replies of a patient Python tutor for absolute beginne
 
 Each request gives the facts as tagged sections: <|task|>, <|level|>, <|error|> (the error \
 Python reported and its line), <|card|> (the rule card: title, rule and reason), sometimes \
-<|hint|>, <|fix|> (a fix the engine has already verified) or <|question|>, and <|code|> (the \
-learner's code, each line starting with its real line number). Write only the reply for \
-<|task|>: no preamble, no tags.
+<|hint|> (the card's hint for this step), <|fix|> (a fix the engine has already verified) or \
+<|question|>, and <|code|> (the learner's code, each line starting with its real line number). \
+Write only the reply for <|task|>: no preamble, no tags.
 
 Truth comes from the facts, never from you:
-- Mention only line numbers that appear in <|error|> or <|fix|>.
+- Mention only the line numbers in <|error|> or <|fix|>, even though you can see others in \
+<|code|>. To point elsewhere, say "the line above" or name the variable instead.
 - In `backticks`, use only names that appear in the code, the card or the fix, or Python's \
 own names.
+- Never guess what the learner meant beyond what the error and the card say. If the card \
+gives an example (such as one method instead of another), don't present it as the answer.
 - Name no error type except the one in <|error|>.
 - Don't contradict the card or add rules it doesn't state.
-- Any code you show must be the fixed line(s) from <|fix|>, in a ```python block, and only \
-for the tasks that allow it.
+
+Code blocks:
+- Only when there is a <|fix|> section, and only for the tasks that allow code.
+- At most one ```python block, holding only the corrected line(s), exactly as after "after:" \
+in <|fix|>.
+- Never put the broken code in a block; quote it in `backticks` instead.
 
 Style: plain words, short sentences, UK English, speaking to the learner as "you". Use their \
 names and code so it's about their program, not a generic one. Explain any jargon. Be warm \
@@ -86,8 +97,14 @@ def judge(text: str | None, item: Item) -> list[str]:
     if text is None:
         return ["declined"]
     reasons = [str(p) for p in grounding.check(text, item.finding, item.source, item.task)]
-    block = FENCE.search(text)
-    if block is not None and not fix_verifies(item, block[1]):
+    blocks = FENCE.findall(text)
+    if blocks and item.task not in CODE_TASKS:
+        reasons.append(f"code: {item.task} shows no code")
+    elif len(blocks) > 1:
+        reasons.append("code: more than one code block")
+    elif blocks and item.finding.fix is None:
+        reasons.append("code: there is no verified fix to show")
+    elif blocks and not fix_verifies(item, blocks[0]):
         reasons.append("fix: the code doesn't verify as a fix")
     return reasons
 

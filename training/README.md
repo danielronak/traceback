@@ -101,10 +101,21 @@ and fix checks, and the seconds per answer. Rejected answers go to
 50 accepted answers one at a time: press `y` if it's good teaching, `n` if
 not (with a short note), `s` to skip and `q` to stop.
 
-**Send me:** the last line `draft` printed, the first few rejections
-(`Get-Content data\generated\v1\rejected-train.jsonl -TotalCount 5`) and the
-review summary (`python -m pymentor_pipeline review --summary`). If the answers
-look poor, I'll tune the teacher's instructions before the long run.
+**Send me** the last line `draft` printed and the whole output of:
+
+```powershell
+python -m pymentor_pipeline report
+```
+
+It shows the counts, why answers were rejected (with examples), one accepted
+answer per task and the review so far. If the answers look poor, the teacher's
+instructions get tuned and the trial runs again: move the trial's files aside
+first, so the new trial starts fresh.
+
+```powershell
+mkdir data\generated\v1\trial1
+Move-Item data\generated\v1\*-train.jsonl data\generated\v1\trial1\ -Include drafts-*,rejected-*,reviews-*
+```
 
 ### 5. The full drafting run (overnight)
 
