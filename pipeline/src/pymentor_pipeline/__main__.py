@@ -51,6 +51,10 @@ def main(argv: list[str] | None = None) -> int:
     rv.add_argument("--sample", type=int, default=50)
     rv.add_argument("--summary", action="store_true", help="only print the results so far")
 
+    rp = commands.add_parser("report", help="a drafting checkpoint: counts, reasons, examples")
+    rp.add_argument("--data", type=Path, default=REPO / "data" / "generated" / "v1")
+    rp.add_argument("--split", default="train")
+
     args = parser.parse_args(argv)
     if args.command == "generate":
         generate(
@@ -74,6 +78,8 @@ def main(argv: list[str] | None = None) -> int:
         triples = ((r["case"], r["task"], r.get("output")) for r in rows)
         tally = draft.accept_outputs(args.data, args.split, triples, name=args.name)
         print(f"{args.split}: {dict(tally)}")
+    elif args.command == "report":
+        review.report(args.data, args.split)
     elif args.command == "review":
         if not args.summary:
             print(dict(review.review(args.data, args.split, sample=args.sample)))

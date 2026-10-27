@@ -25,6 +25,7 @@ import ast
 import builtins
 import keyword
 import re
+import textwrap
 from dataclasses import dataclass
 
 from .facts import Finding
@@ -80,10 +81,8 @@ def check(text: str, finding: Finding, source: str, task: str) -> list[Problem]:
                 problems.append(Problem("name", f"`{name}` isn't in the code, the card or Python"))
 
     for block in FENCE.findall(text):
-        try:
-            ast.parse(block)
-        except SyntaxError as error:
-            problems.append(Problem("code", f"a code block doesn't compile: {error.msg}"))
+        if not compiles(block):
+            problems.append(Problem("code", "a code block doesn't compile"))
 
     card_text = _card_text(finding)
     for error_type in set(ERROR_TYPE.findall(text)):
@@ -130,6 +129,21 @@ def known_names(finding: Finding, source: str) -> set[str]:
     if finding.fix is not None:
         names |= set(IDENTIFIER.findall(finding.fix.after))
     return names | PYTHON_NAMES
+
+
+def compiles(block: str) -> bool:
+    """Whether a code block is valid Python. A fix is often one line lifted from
+    a larger program: indented (`    return total`), or a block header whose body
+    follows in the learner's code (`for name in ages:`). Both count, as long as
+    the line itself is correct."""
+    source = textwrap.dedent(block).strip("\n")
+    for candidate in (source, source + "\n    pass"):
+        try:
+            ast.parse(candidate)
+            return True
+        except (SyntaxError, ValueError):
+            continue
+    return False
 
 
 def _names_in(span: str) -> list[str]:

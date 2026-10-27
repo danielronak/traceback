@@ -2,7 +2,7 @@ import pytest
 
 from pymentor import CardLibrary, Engine
 from pymentor.exercises import Exercise
-from pymentor.grounding import check, is_grounded
+from pymentor.grounding import check, compiles, is_grounded
 
 ENGINE = Engine(step_limit=20_000)
 SOURCE = "total = 0\nfor n in [1, 2, 3]:\n    total += n\nprint(totl)\n"
@@ -88,3 +88,12 @@ def test_every_cards_own_text_is_grounded(card, example):
 
 def test_ranges_with_an_en_dash_are_read():
     assert problems("See lines 4–9.") == ["line"]  # noqa: RUF001 (the en dash is the point)
+
+
+def test_a_fix_line_lifted_from_a_program_counts_as_code():
+    # A corrected block header or indented line is valid on its own terms...
+    for block in ("for name in ages:", "    return total", "while x <= 3:\n    x += 1"):
+        assert compiles(block), block
+    # ...but a line that is itself wrong still isn't.
+    for block in ("if x = 5:", "print(score", "for name in ages"):
+        assert not compiles(block), block

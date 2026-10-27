@@ -533,3 +533,19 @@ runs the engine, pipeline and training suites on `windows-latest` as well, so
 Windows-only failures show up before the owner hits them. `draft --limit` is
 the total for a split, so re-running an interrupted command resumes it.
 *Accepted.*
+
+**D47. Teacher instructions, second version, after the first trial.** The
+first 500-answer trial with Qwen3-4B-Instruct-2507 (3.7 s per answer on the
+owner's RTX 3050) kept 354 and rejected 146. Most rejections had three causes.
+The teacher put the broken line and the fixed line in two code blocks, so the
+first block read as a broken fix. It wrote code where the facts had no verified
+fix. And the checker rejected correct single fix lines, such as a `for` header
+without its body. Reading the accepted answers found two problems no check
+catches: a hint steering `days.sotr()` towards `.append()` (copied from the
+card's example) and a level-1 hint giving the answer away. Changes: the
+grounding check accepts a fix line if it compiles with a body added; the judge
+allows at most one code block, only in `explain` and `hint_level_3`, and only
+when the facts include a fix; and the instructions define each hint rung more
+precisely, forbid guessing beyond the facts, and say how to point at other
+lines without naming their numbers. `python -m pymentor_pipeline report` gives
+each checkpoint in one command. *Accepted; the second trial measures it.*

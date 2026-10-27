@@ -72,3 +72,36 @@ def summary(data: Path, split: str) -> dict[str, Any]:
 
 def _key(row: dict[str, Any]) -> tuple[str, str]:
     return row["case"], row["task"]
+
+
+def report(data: Path, split: str, *, per_reason: int = 3, show: Callable[[str], object] = print):
+    """A drafting checkpoint in one go: counts, rejection reasons with examples,
+    one accepted answer per task, and the human review so far."""
+
+    def rows(name: str) -> list[dict[str, Any]]:
+        path = data / f"{name}-{split}.jsonl"
+        return read_jsonl(path) if path.exists() else []
+
+    accepted, rejected = rows("drafts"), rows("rejected")
+    show(f"ACCEPTED {len(accepted)}, REJECTED {len(rejected)}")
+    show(f"accepted by task: {dict(Counter(r['task'] for r in accepted))}")
+    show(f"rejected by task: {dict(Counter(r['task'] for r in rejected))}")
+    reasons = Counter(x.split(":")[0] for r in rejected for x in r["reasons"])
+    show(f"rejection reasons: {reasons.most_common()}")
+    show(f"review so far: {summary(data, split)}")
+    for reason, _ in reasons.most_common():
+        examples = [r for r in rejected if any(x.startswith(reason) for x in r["reasons"])]
+        for row in examples[:per_reason]:
+            show(f"\n=== REJECTED ({reason}) {row['task']}: {row['reasons']}")
+            show(f">>> {row['output']}")
+    seen: set[str] = set()
+    for row in accepted:
+        if row["task"] in seen:
+            continue
+        seen.add(row["task"])
+        lines = row["prompt"].splitlines()
+        error = next((line for line in lines if line.startswith("<|error|>")), "")
+        code = row["prompt"].split("<|code|>", 1)[1].removesuffix("<|response|>").strip()
+        show(f"\n=== ACCEPTED {row['task']} | {error.removeprefix('<|error|>')}")
+        show(code)
+        show(f">>> {row['target'].removesuffix('<|end|>')}")

@@ -142,3 +142,40 @@ def test_limit_is_a_total_so_rerunning_resumes(tmp_path, small_dataset):
     assert len(calls) == 6  # the second run found the 6 already done
     draft.draft(data, "train", teacher, name="fake", limit=9, log=lambda _: None)
     assert len(calls) == 9
+
+
+def _item_with_fix(data, task):
+    from pymentor_pipeline.records import finding_from_record
+
+    cases = {c["id"]: c for c in read_jsonl(data / "cases-train.jsonl")}
+    for example in read_jsonl(data / "examples-train.jsonl"):
+        case = cases[example["case"]]
+        if example["task"] == task and case["finding"]["fix"]:
+            return draft._item(case, example), finding_from_record(case["finding"]).fix
+    raise AssertionError(f"no {task} example with a fix")
+
+
+def test_judge_rejects_code_the_task_or_facts_do_not_allow(small_dataset):
+    data = small_dataset[0]
+    item, fix = _item_with_fix(data, "hint_level_3")
+    good = f"Change it to this:\n```python\n{fix.after}\n```"
+    assert draft.judge(good, item) == []
+    before_after = f"Change\n```python\n{fix.before}\n```\nto\n```python\n{fix.after}\n```"
+    assert "code: more than one code block" in draft.judge(before_after, item)
+
+    hint, fix = _item_with_fix(data, "hint_level_1")
+    assert "code: hint_level_1 shows no code" in draft.judge(f"```python\n{fix.after}\n```", hint)
+
+
+def test_report_shows_counts_reasons_and_examples(data):
+    def teacher(system, prompt_text):
+        return (
+            "See line 999." if "hint_level_1" in prompt_text else card_teacher(system, prompt_text)
+        )
+
+    draft.draft(data, "val", teacher, name="fake", log=lambda _: None)  # a no-op if done already
+    lines = []
+    review.report(data, "val", show=lines.append)
+    text = "\n".join(lines)
+    assert text.startswith("ACCEPTED ")
+    assert "rejection reasons:" in text and "=== ACCEPTED" in text
