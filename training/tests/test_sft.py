@@ -50,12 +50,24 @@ def test_low_memory_options_train_too(tiny_base, tiny_data, tmp_path):
             tmp_path,
             max_steps=4,
             optimizer="adafactor",
-            dtype="bf16",
             gradient_checkpointing=True,
         ),
         log=lambda _: None,
     )
     assert summary["steps"] == 4
+
+
+def test_bf16_weights_are_chosen_when_asked():
+    # Only the choice is checked here: bf16 maths on a CPU crashed one CI
+    # runner inside PyTorch ("illegal instruction"), and real runs use the GPU.
+    import torch
+
+    from pymentor_training.sft import Config, _load_dtype
+
+    chosen = _load_dtype(Config(base="", data="", out="", dtype="bf16"))
+    assert list(chosen.values()) == [torch.bfloat16]
+    default = _load_dtype(Config(base="", data="", out=""))
+    assert list(default.values()) == [torch.float32]
 
 
 def test_the_harness_scores_a_trained_tutor(trained):
