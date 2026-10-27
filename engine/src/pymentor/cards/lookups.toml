@@ -84,19 +84,21 @@ examples = [
 
 [[card]]
 id = "attribute-typo"
-title = "No `.{attribute}` here. Did you mean `.{python_suggestion}`?"
-match = { code = "AttributeError", when = { python_suggestion = true } }
+title = "No `.{attribute}` here. Did you mean `.{similar_attribute}`?"
+match = { code = "AttributeError", when = { similar_attribute = true } }
 priority = 5
 rule = "Methods and attributes must be spelled exactly as Python defines them."
-why = "Each type of value has a fixed set of methods. `.{attribute}` isn't one of them for type `{obj_type}`, and Python won't guess between similar names, though it does suggest the closest one."
+why = "Each type of value has a fixed set of methods. `.{attribute}` isn't one of them for type `{obj_type}`, but `.{similar_attribute}` is, and it's spelled almost the same. Python never guesses what you meant, so a name that's nearly right is still an error."
 hints = [
   "Check the spelling of `.{attribute}` on line {line}.",
-  "Python found a method with a very similar name.",
-  "Did you mean `.{python_suggestion}`?",
+  "There's a method with a very similar name: compare the letters one by one.",
+  "Did you mean `.{similar_attribute}`?",
 ]
-fix = "replace_attribute:python_suggestion"
+fix = "replace_attribute:similar_attribute"
 examples = [
   { source = "word = \"hello\"\nprint(word.uper())\n", after = "print(word.upper())" },
+  { source = "days = [3, 1, 2]\ndays.sotr()\n", after = "days.sort()" },
+  { source = "import math\nprint(math.sqtr(9))\n", after = "print(math.sqrt(9))" },
 ]
 
 [[card]]

@@ -97,3 +97,30 @@ def test_a_fix_line_lifted_from_a_program_counts_as_code():
     # ...but a line that is itself wrong still isn't.
     for block in ("if x = 5:", "print(score", "for name in ages"):
         assert not compiles(block), block
+
+
+def _finding(source):
+    return Engine().run(source).findings[0]
+
+
+NAME_TYPO = "year = 2024\nlabel = 'Year'\nprint(label)\nprint(yera)\n"
+
+
+def test_another_line_is_fine_when_the_sentence_quotes_its_code():
+    finding = _finding(NAME_TYPO)
+    good = "You probably meant `year`, which you created on line 1."
+    assert not [p for p in check(good, finding, NAME_TYPO, "explain") if p.check == "line"]
+    wrong = "You created `year` on line 2."  # line 2 holds `label`, not `year`
+    assert [p for p in check(wrong, finding, NAME_TYPO, "explain") if p.check == "line"]
+    bare = "Look at line 2."
+    assert [p for p in check(bare, finding, NAME_TYPO, "explain") if p.check == "line"]
+
+
+def test_statements_in_backticks_must_come_from_the_code_card_or_fix():
+    finding = _finding(NAME_TYPO)
+    assert finding.fix is not None and "print(year)" in finding.fix.after
+    quoted = "Line 4 says `print(yera)`; you wrote `year = 2024` earlier."
+    assert not [p for p in check(quoted, finding, NAME_TYPO, "explain") if p.check == "code"]
+    invented = "Write `year = 0` first."
+    problems = [p for p in check(invented, finding, NAME_TYPO, "explain") if p.check == "code"]
+    assert problems and "year = 0" in problems[0].detail
