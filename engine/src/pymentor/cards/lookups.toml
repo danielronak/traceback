@@ -102,6 +102,23 @@ examples = [
 ]
 
 [[card]]
+id = "method-of-another-type"
+title = "`.{attribute}` belongs to `{attribute_owner}`, not `{obj_type}`"
+match = { code = "AttributeError", when = { attribute_owner = true } }
+rule = "Each type of value has its own methods. `.{attribute}` is a method of `{attribute_owner}` values, so the value before the `.` must be a `{attribute_owner}`."
+why = "Python looks for a method on the type of the value in front of the dot. On line {line} that value is of type `{obj_type}`, and only `{attribute_owner}` values have `.{attribute}`, so Python stops rather than guess which value you meant."
+hints = [
+  "What type is the value just before `.{attribute}` on line {line}?",
+  "`.{attribute}` is a method of `{attribute_owner}`, but here it's used on a value of type `{obj_type}`.",
+  "Turn the value into a `{attribute_owner}` first, or call `.{attribute}` on a value that already is one.",
+]
+related = ["attribute-missing"]
+examples = [
+  { source = "score = 7\nprint(score.rjust(4))\n" },
+  { source = "word = \"hi\"\nword.append(\"!\")\n" },
+]
+
+[[card]]
 id = "attribute-missing"
 title = "Values of type `{obj_type}` have no `.{attribute}`"
 match = { code = "AttributeError", when = { attribute = true } }
@@ -109,7 +126,7 @@ rule = "Each type of value has its own methods: lists have `.append()`, text has
 why = "When you write `x.{attribute}`, Python looks for `{attribute}` on the type of `x`, which here is `{obj_type}`. It isn't there, so Python stops rather than guess what you meant."
 hints = [
   "What type of value comes before the `.` on line {line}?",
-  "Does type `{obj_type}` have a method called `{attribute}`? For example, Python lists use `.append()`, not `.push()`.",
+  "Does type `{obj_type}` have a method called `{attribute}`? Methods from other types, or from other languages, don't carry over.",
   "Look up the methods of type `{obj_type}`, for example with `help({obj_type})`.",
 ]
 examples = [

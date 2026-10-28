@@ -625,6 +625,9 @@ def _attribute_error(context: Context) -> Features:
     features["similar_attribute"] = features["python_suggestion"] or _similar_attribute(
         features.get("attribute"), features.get("obj_type"), features.get("module_name")
     )
+    features["attribute_owner"] = _attribute_owner(
+        features.get("attribute"), features.get("obj_type")
+    )
 
     if features.get("obj_type") == "NoneType" and context.tree is not None:
         node = node_at(context.tree, context.diagnostic, ast.Attribute)
@@ -637,6 +640,13 @@ def _attribute_error(context: Context) -> Features:
 # anything of the learner's: what beginners call methods on most.
 KNOWN_TYPES = {t.__name__: t for t in (str, list, dict, set, tuple, int, float, bool)}
 SAFE_MODULES = ("math", "random", "string", "statistics", "datetime", "time")
+
+
+def _attribute_owner(attribute: str | None, obj_type: str | None) -> str | None:
+    """`score.rjust(4)` on an int: `.rjust` is real, but it belongs to `str`."""
+    if not attribute or attribute.startswith("_") or obj_type not in KNOWN_TYPES:
+        return None
+    return next((name for name, t in KNOWN_TYPES.items() if hasattr(t, attribute)), None)
 
 
 def _similar_attribute(attribute: str | None, obj_type: str | None, module: str | None):
