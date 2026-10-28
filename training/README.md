@@ -168,6 +168,19 @@ Expect about 16,500 times the seconds per answer from step 4. `--limit` is
 the total for that split, including the 500 from the trial, so if it stops,
 run the same command again and it carries on where it left off.
 
+Then have the grader check every answer. This takes a few hours too, so it
+can be a second night:
+
+```powershell
+python -m pymentor_pipeline grade --url http://localhost:11434/v1/chat/completions `
+  --model qwen3:4b-instruct-2507-q4_K_M
+python -m pymentor_pipeline grade --url http://localhost:11434/v1/chat/completions `
+  --model qwen3:4b-instruct-2507-q4_K_M --split val
+```
+
+Training leaves out every answer the grader marked bad. Like `draft`, `grade`
+resumes where it stopped if you run it again.
+
 ### 6. Fine-tune the three tutors
 
 Free the GPU first: `ollama stop qwen3:4b-instruct-2507-q4_K_M`, then check
