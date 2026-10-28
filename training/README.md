@@ -87,6 +87,17 @@ ollama run qwen3:4b-instruct-2507-q4_K_M "Say hello in five words."
 ollama ps                                                # PROCESSOR should say 100% GPU
 ```
 
+The teacher's instructions are about 1,500 tokens with a question, so Ollama
+needs a context window of at least 4,096 tokens. If it's smaller, Ollama
+quietly drops the start of the prompt, which is where the instructions are.
+While the model is loaded, `ollama ps` shows the size under `CONTEXT`. If
+it's below 4096, raise it, then quit Ollama from the system tray and start it
+again:
+
+```powershell
+setx OLLAMA_CONTEXT_LENGTH 8192
+```
+
 ### 4. Trial run: 500 answers, then look at them (about 30 to 60 minutes)
 
 ```powershell
@@ -116,6 +127,8 @@ first, so the new trial starts fresh.
 mkdir data\generated\v1\trial1
 Move-Item data\generated\v1\*-train.jsonl data\generated\v1\trial1\ -Include drafts-*,rejected-*,reviews-*
 ```
+
+Use a new folder name for each trial (`trial2`, `trial3`, and so on).
 
 ### 5. The full drafting run (overnight)
 

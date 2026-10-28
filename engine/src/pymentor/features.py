@@ -16,6 +16,7 @@ from __future__ import annotations
 import ast
 import builtins
 import difflib
+import importlib
 import keyword
 import re
 import sys
@@ -563,17 +564,45 @@ def _value_error(context: Context) -> Features:
 def _attribute_error(context: Context) -> Features:
     features: Features = {}
     match = context.message_match(r"^'(\w+)' object has no attribute '(\w+)'")
-    match = match or context.message_match(r"^(module) '\w+' has no attribute '(\w+)'")
+    module = context.message_match(r"^module '(\w+)' has no attribute '(\w+)'")
     if match:
         features.update(obj_type=match[1], attribute=match[2])
+    elif module:
+        features.update(obj_type="module", module_name=module[1], attribute=module[2])
     suggestion = context.message_match(r"Did you mean: '(\w+)'\?")
     features["python_suggestion"] = suggestion[1] if suggestion else None
+    # Python only suggests near-misses within a small edit distance, so swapped
+    # letters (`sotr`, `sqtr`) get no suggestion. A same-letters or very close
+    # match among the attributes the value really has is just as certain.
+    features["similar_attribute"] = features["python_suggestion"] or _similar_attribute(
+        features.get("attribute"), features.get("obj_type"), features.get("module_name")
+    )
 
     if features.get("obj_type") == "NoneType" and context.tree is not None:
         node = node_at(context.tree, context.diagnostic, ast.Attribute)
         if node is not None and isinstance(node.value, ast.Name):
             features.update(_from_inplace(context.tree, [node.value.id], context.diagnostic.line))
     return features
+
+
+# Types and modules whose attributes can be listed safely, without running
+# anything of the learner's: what beginners call methods on most.
+KNOWN_TYPES = {t.__name__: t for t in (str, list, dict, set, tuple, int, float, bool)}
+SAFE_MODULES = ("math", "random", "string", "statistics", "datetime", "time")
+
+
+def _similar_attribute(attribute: str | None, obj_type: str | None, module: str | None):
+    if not attribute:
+        return None
+    if obj_type in KNOWN_TYPES:
+        names = dir(KNOWN_TYPES[obj_type])
+    elif module in SAFE_MODULES:
+        names = dir(importlib.import_module(module))
+    else:
+        return None
+    public = sorted(n for n in names if not n.startswith("_") and n != attribute)
+    same_letters = [n for n in public if sorted(n) == sorted(attribute)]
+    return same_letters[0] if same_letters else closest(attribute, public, cutoff=0.8)
 
 
 def _from_inplace(tree: ast.Module, names: list[str], line: int) -> Features:

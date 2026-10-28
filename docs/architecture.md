@@ -549,3 +549,33 @@ when the facts include a fix; and the instructions define each hint rung more
 precisely, forbid guessing beyond the facts, and say how to point at other
 lines without naming their numbers. `python -m pymentor_pipeline report` gives
 each checkpoint in one command. *Accepted; the second trial measures it.*
+
+**D48. Teacher instructions, third version, after the second trial.** The
+second trial kept 409 of 500 answers, but a person rated only 68% of a sample
+of 50 as good teaching, so passing the checks wasn't enough. The bad answers
+had five causes:
+
+- They invented inline fixes in backticks, which no check looked at.
+- They copied the card's example method (`.sotr()` becoming `.append()`).
+  Python gives no suggestion for swapped letters.
+- Early hints gave the answer away.
+- They prefixed code blocks with line numbers.
+- `why_followup` answers were generic.
+
+The checker also wrongly rejected correct answers that pointed at the line where
+a name was created. Changes:
+
+- The engine finds a near-miss attribute itself (same letters, or a close
+  spelling), for built-in types and a few safe standard modules. A new
+  `attribute-typo` card states it, with a verified fix.
+- Grounding rejects an assignment, import or `return` in backticks unless it
+  comes from the learner's code, the card or the fix.
+- Grounding allows another line number when the same sentence quotes code that
+  is on that line.
+- The instructions now end with one complete worked example: real facts and the
+  right reply for every task, which a test runs through the judge.
+- `report` lists each answer the reviewer marked bad, with their note.
+
+The instructions are about 1,100 tokens, so the teacher server needs a context
+window of at least 4,096 tokens. Ollama otherwise cuts the start of the prompt
+without warning. *Accepted; the third trial measures it.*

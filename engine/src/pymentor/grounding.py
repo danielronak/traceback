@@ -9,10 +9,12 @@ the card's own wording.
 The checks are deliberately simple and lexical, so they're fast enough to run
 after every generation in the browser:
 
-- **Line numbers** mentioned must be ones the facts mention.
+- **Line numbers** mentioned must be ones the facts mention, or a line whose
+  code the same sentence quotes.
 - **Code in backticks** may only use names that appear in the learner's code,
   the card, the fix, or Python itself.
-- **Code blocks** must compile.
+- **Code blocks** must compile, and statements in backticks (`total = 0`)
+  must be the learner's code, the card's or the fix's.
 - **Error types** named (``NameError`` and so on) must be the actual error, or
   one the card itself names.
 - **Early hints** must not give the fix away.
@@ -50,6 +52,7 @@ BACKTICKS = re.compile(r"(?<!`)`([^`\n]+)`(?!`)")
 FENCE = re.compile(r"```[a-zA-Z]*\n(.*?)```", re.DOTALL)
 ERROR_TYPE = re.compile(r"\b([A-Z][A-Za-z]*(?:Error|Exception))\b")
 IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+SENTENCE = re.compile(r"(?<=[.!?])\s+|\n+")
 PYTHON_NAMES = frozenset(dir(builtins)) | frozenset(keyword.kwlist) | frozenset(keyword.softkwlist)
 
 
@@ -69,10 +72,18 @@ def check(text: str, finding: Finding, source: str, task: str) -> list[Problem]:
         return [Problem("empty", "no text")]
 
     allowed = allowed_lines(finding)
-    for mention in LINE_MENTION.finditer(text):
-        for number in map(int, NUMBER.findall(mention[1])):
-            if number not in allowed:
-                problems.append(Problem("line", f"mentions line {number}, not in the facts"))
+    lines = source.splitlines()
+    for sentence in SENTENCE.split(text):
+        quoted = [_squash(span) for span in BACKTICKS.findall(sentence) if len(_squash(span)) > 1]
+        for mention in LINE_MENTION.finditer(sentence):
+            for number in map(int, NUMBER.findall(mention[1])):
+                # Another line is fine when the sentence quotes what is really on it:
+                # "you defined `year` on line 3". The code itself is a fact.
+                shows = 1 <= number <= len(lines) and any(
+                    q in _squash(lines[number - 1]) for q in quoted
+                )
+                if number not in allowed and not shows:
+                    problems.append(Problem("line", f"mentions line {number}, not in the facts"))
 
     known = known_names(finding, source)
     for span in BACKTICKS.findall(text):
@@ -83,6 +94,15 @@ def check(text: str, finding: Finding, source: str, task: str) -> list[Problem]:
     for block in FENCE.findall(text):
         if not compiles(block):
             problems.append(Problem("code", "a code block doesn't compile"))
+
+    # A statement in backticks (`total = 0`, `import math`) is a claim about what
+    # the code is or should be: it must be the learner's, the card's or the fix's.
+    sources = _squash(source + _card_text(finding) + (finding.fix.after if finding.fix else ""))
+    for span in BACKTICKS.findall(text):
+        if _is_statement(span) and _squash(span) not in sources:
+            problems.append(
+                Problem("code", f"`{span}` isn't the learner's code, the card or the fix")
+            )
 
     card_text = _card_text(finding)
     for error_type in set(ERROR_TYPE.findall(text)):
@@ -129,6 +149,17 @@ def known_names(finding: Finding, source: str) -> set[str]:
     if finding.fix is not None:
         names |= set(IDENTIFIER.findall(finding.fix.after))
     return names | PYTHON_NAMES
+
+
+STATEMENTS = (ast.Assign, ast.AugAssign, ast.AnnAssign, ast.Import, ast.ImportFrom, ast.Return)
+
+
+def _is_statement(span: str) -> bool:
+    try:
+        tree = ast.parse(span.strip())
+    except (SyntaxError, ValueError):
+        return False
+    return any(isinstance(node, STATEMENTS) for node in tree.body)
 
 
 def compiles(block: str) -> bool:

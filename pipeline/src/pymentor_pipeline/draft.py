@@ -43,13 +43,33 @@ TASK_GUIDE = {
     "objected to, and the rule behind it. You may end with the corrected code.",
     "hint_level_1": "A gentle nudge: point to where to look (the line, or the part of the "
     "line) and ask a question about it. Don't say what is wrong or what to change.",
-    "hint_level_2": "A clearer hint: name the idea that is wrong (for example, that a block "
-    "header ends with a colon, or that text and numbers are different types), using the "
-    "card's hint. Don't spell out the edit, and don't show code.",
+    "hint_level_2": "A clearer hint: name the idea that is wrong, using the card's hint, "
+    "without spelling out the edit or showing code.",
     "hint_level_3": "A near-answer: say exactly what to change. You may show the corrected code.",
-    "why_followup": "Answer the learner's <|question|> using the card's reason, about their code.",
+    "why_followup": "Answer the learner's <|question|>: explain the card's reason (its last "
+    "part) in your own words, then connect it to their code.",
     "review": "Gently review working code.",
     "logic_error": "Explain why the code gives the wrong answer for the failing test.",
+}
+
+# One complete example, built from a real finding; a test checks every answer
+# passes the same checks the teacher's drafts face.
+EXAMPLE_SOURCE = 'scores = [72, 85, 90]\nif len(scores) > 2\n    print("Enough scores")\n'
+EXAMPLE_ANSWERS = {
+    "explain": 'Line 2 starts an `if` block: the indented `print("Enough scores")` '
+    "belongs to it. In Python, every line that starts a block ends with a colon, and "
+    "yours doesn't, so Python stops before running anything.\n"
+    "```python\nif len(scores) > 2:\n```",
+    "hint_level_1": "Look at the very end of line 2, where your `if` starts. Compare it "
+    "with other `if` lines you've seen: is something missing?",
+    "hint_level_2": "A line that starts a block, like your `if`, needs a symbol at its "
+    "end to show that an indented group follows. Line 2 doesn't have it yet.",
+    "hint_level_3": "Add a colon at the end of line 2, so your `if` line reads:\n"
+    "```python\nif len(scores) > 2:\n```",
+    "why_followup": "Python groups code by indentation instead of curly braces. The colon "
+    "at the end of an `if` line is the signal that a group is starting, so Python knows "
+    'the indented `print("Enough scores")` belongs to your `if`. Without it, Python '
+    "can't tell where the group begins, so it stops before running anything.",
 }
 
 SYSTEM = """You write the replies of a patient Python tutor for absolute beginners.
@@ -61,10 +81,12 @@ Python reported and its line), <|card|> (the rule card: title, rule and reason),
 Write only the reply for <|task|>: no preamble, no tags.
 
 Truth comes from the facts, never from you:
-- Mention only the line numbers in <|error|> or <|fix|>, even though you can see others in \
-<|code|>. To point elsewhere, say "the line above" or name the variable instead.
+- Mention the line numbers in <|error|> or <|fix|>. Mention another line only when the same \
+sentence quotes the code on it in backticks, for example "you created `year` on line 3".
 - In `backticks`, use only names that appear in the code, the card or the fix, or Python's \
 own names.
+- Any code you write, in backticks or in a block, must be the learner's code, the card's, or \
+the corrected line(s) from <|fix|>. Never invent a fix, a value or a variable.
 - Never guess what the learner meant beyond what the error and the card say. If the card \
 gives an example (such as one method instead of another), don't present it as the answer.
 - Name no error type except the one in <|error|>.
@@ -73,7 +95,7 @@ gives an example (such as one method instead of another), don't present it as th
 Code blocks:
 - Only when there is a <|fix|> section, and only for the tasks that allow code.
 - At most one ```python block, holding only the corrected line(s), exactly as after "after:" \
-in <|fix|>.
+in <|fix|>, with no line numbers.
 - Never put the broken code in a block; quote it in `backticks` instead.
 
 Style: plain words, short sentences, UK English, speaking to the learner as "you". Use their \
@@ -81,15 +103,28 @@ names and code so it's about their program, not a generic one. Explain any jargo
 but not gushing.
 
 Tasks and their word limits:
-{tasks}"""
+{tasks}
+
+A complete example. The facts:
+{example_facts}
+
+The right reply for each task:
+{example_answers}"""
 
 
 def system_prompt() -> str:
-    lines = [
+    from pymentor import Engine
+
+    tasks = [
         f"- {task} (at most {grounding.WORD_LIMITS[task]} words): {guide}"
         for task, guide in TASK_GUIDE.items()
     ]
-    return SYSTEM.format(tasks="\n".join(lines))
+    finding = Engine().check(EXAMPLE_SOURCE).findings[0]
+    facts = prompt.build(finding, EXAMPLE_SOURCE, "explain").removesuffix("<|response|>").strip()
+    answers = [f"[{task}]\n{text}" for task, text in EXAMPLE_ANSWERS.items()]
+    return SYSTEM.format(
+        tasks="\n".join(tasks), example_facts=facts, example_answers="\n\n".join(answers)
+    )
 
 
 def judge(text: str | None, item: Item) -> list[str]:

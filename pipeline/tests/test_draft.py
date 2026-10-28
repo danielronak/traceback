@@ -179,3 +179,18 @@ def test_report_shows_counts_reasons_and_examples(data):
     text = "\n".join(lines)
     assert text.startswith("ACCEPTED ")
     assert "rejection reasons:" in text and "=== ACCEPTED" in text
+    if "'bad'" in text:  # the review test marked one answer bad, with a note
+        assert "=== REVIEWED BAD" in text
+
+
+def test_the_worked_example_passes_every_check_the_teacher_faces():
+    from pymentor import Engine
+    from pymentor_pipeline.evaluate import Item
+
+    finding = Engine().check(draft.EXAMPLE_SOURCE).findings[0]
+    assert finding.card.id == "missing-colon" and finding.fix is not None
+    for task, answer in draft.EXAMPLE_ANSWERS.items():
+        item = Item("example", task, "", finding, draft.EXAMPLE_SOURCE, (), ())
+        assert draft.judge(answer, item) == [], task
+    system = draft.system_prompt()
+    assert "if len(scores) > 2:" in system and "[hint_level_1]" in system
