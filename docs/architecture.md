@@ -619,3 +619,17 @@ If the next trial still rates below 80% good, the plan is a larger local
 teacher for the drafting run. Hints could come from the card text instead, but
 the tutor still has to learn to write them. *Accepted; the fourth trial
 measures it.*
+
+**D50. A local model grades the drafts, checked against people.** Reading 50
+answers for each trial is slow, and 50 is still a noisy sample. `grade` asks a
+local model to judge every accepted draft with a rubric that mirrors the human
+review: is every claim about the code true, and is the answer right for its
+task? Each verdict is one line, so grading costs much less than drafting. A
+grader is only trusted after `grade --calibrate` has graded the answers people
+already reviewed in earlier trials, and reported how often it agrees and how
+many of their "bad" verdicts it catches. A person then checks 15 answers per
+trial instead of 50. The grader runs locally like the teacher (D40). By default
+it is the teacher model itself, which may go easy on its own mistakes; the
+calibration shows whether that matters. If the grader proves reliable, its
+verdicts can also filter the full drafting run before training. *Accepted;
+calibration decides whether it's used.*

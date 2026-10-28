@@ -102,19 +102,37 @@ again:
 setx OLLAMA_CONTEXT_LENGTH 8192
 ```
 
-### 4. Trial run: 500 answers, then look at them (about 30 to 60 minutes)
+### 4. Trial run: 500 answers, then check them (about an hour, mostly unattended)
 
 ```powershell
 python -m pymentor_pipeline draft --url http://localhost:11434/v1/chat/completions `
   --model qwen3:4b-instruct-2507-q4_K_M --limit 500
-python -m pymentor_pipeline review --sample 50
+python -m pymentor_pipeline grade --url http://localhost:11434/v1/chat/completions `
+  --model qwen3:4b-instruct-2507-q4_K_M
+python -m pymentor_pipeline review --sample 15
 ```
 
 `draft` prints its progress every 100 answers: how many passed the grounding
 and fix checks, and the seconds per answer. Rejected answers go to
-`data\generated\v1\rejected-train.jsonl` with the reason. `review` then shows
-50 accepted answers one at a time: press `y` if it's good teaching, `n` if
-not (with a short note), `s` to skip and `q` to stop.
+`data\generated\v1\rejected-train.jsonl` with the reason.
+
+`grade` has the local model judge every accepted answer against the same
+questions a person asks: is everything it says about the code true, and is it
+right for its task (a first hint mustn't give the answer away)? It's quicker
+than drafting, because each verdict is one short line. `review` then shows 15
+answers one at a time, so you can check the grader: press `y` if it's good
+teaching, `n` if not (with a short note), `s` to skip and `q` to stop.
+
+**Before you rely on the grader**, check once that it agrees with you. Have it
+grade the answers you already reviewed by hand in earlier trials:
+
+```powershell
+python -m pymentor_pipeline grade --url http://localhost:11434/v1/chat/completions `
+  --model qwen3:4b-instruct-2507-q4_K_M --calibrate data\generated\v1\trial2 data\generated\v1\trial3
+```
+
+It prints how often the grader agreed with you, the share of your "bad"
+answers it caught, and its estimate of the good share next to yours.
 
 **Send me** the last line `draft` printed and the whole output of:
 
@@ -122,14 +140,14 @@ not (with a short note), `s` to skip and `q` to stop.
 python -m pymentor_pipeline report
 ```
 
-It shows the counts, why answers were rejected (with examples), one accepted
-answer per task and the review so far. If the answers look poor, the teacher's
-instructions get tuned and the trial runs again: move the trial's files aside
-first, so the new trial starts fresh.
+It shows the counts, why answers were rejected (with examples), the grader's
+verdicts with examples, one accepted answer per task and the review so far. If
+the answers look poor, the teacher's instructions get tuned and the trial runs
+again: move the trial's files aside first, so the new trial starts fresh.
 
 ```powershell
 mkdir data\generated\v1\trial1
-Move-Item data\generated\v1\*-train.jsonl data\generated\v1\trial1\ -Include drafts-*,rejected-*,reviews-*
+Move-Item data\generated\v1\*-train.jsonl data\generated\v1\trial1\ -Include drafts-*,rejected-*,reviews-*,grades-*
 ```
 
 Use a new folder name for each trial (`trial2`, `trial3`, and so on).
