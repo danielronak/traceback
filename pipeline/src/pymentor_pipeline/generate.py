@@ -175,6 +175,7 @@ def generate(
     every_case = [case for name, _ in SPLITS for case in cases[name]]
     manifest = {
         "prompt_version": prompt.PROMPT_VERSION,
+        "engine": engine_fingerprint(),
         "python": platform.python_version(),
         "per_kind": per_kind,
         "variants_per_seed": variant_count,
@@ -196,6 +197,20 @@ def generate(
     total = sum(manifest["examples"].values())
     log(f"{len(every_case)} cases, {total} examples in {manifest['seconds']}s -> {out}")
     return manifest
+
+
+def engine_fingerprint() -> str:
+    """A hash of the engine's code and cards. Cases record the findings the
+    engine made when they were generated, so a changed engine means stale data."""
+    import pymentor
+
+    package = Path(pymentor.__file__).parent
+    digest = hashlib.sha256()
+    for path in sorted(package.rglob("*"), key=lambda p: p.relative_to(package).as_posix()):
+        if path.suffix in (".py", ".toml"):
+            digest.update(path.relative_to(package).as_posix().encode())
+            digest.update(path.read_bytes().replace(b"\r\n", b"\n"))
+    return digest.hexdigest()[:16]
 
 
 # --- Worker processes ------------------------------------------------------

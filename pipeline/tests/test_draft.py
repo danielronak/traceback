@@ -194,3 +194,16 @@ def test_the_worked_example_passes_every_check_the_teacher_faces():
         assert draft.judge(answer, item) == [], task
     system = draft.system_prompt()
     assert "if len(scores) > 2:" in system and "[hint_level_1]" in system
+
+
+def test_drafting_refuses_data_from_an_older_engine(tmp_path, small_dataset):
+    import shutil
+
+    data = tmp_path / "data"
+    shutil.copytree(small_dataset[0], data)
+    draft.require_fresh(data)  # made by this engine
+    manifest = json.loads((data / "manifest.json").read_text(encoding="utf-8"))
+    manifest["engine"] = "0" * 16
+    (data / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(SystemExit, match="generate"):
+        draft.draft(data, "train", card_teacher, name="fake", limit=1, log=lambda _: None)
