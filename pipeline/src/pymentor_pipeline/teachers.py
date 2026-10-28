@@ -26,8 +26,13 @@ def local_teacher(
     max_tokens: int = 400,
     temperature: float = 0.3,
     timeout: float = 300,
+    keep_cut_off: bool = False,
 ):
-    """A teacher that asks a model server on this machine. Refuses any other host."""
+    """A teacher that asks a model server on this machine. Refuses any other host.
+
+    A reply cut off by ``max_tokens`` counts as declined, unless ``keep_cut_off``
+    (a grader's verdict comes first, so the rest can be lost).
+    """
     host = urlparse(url).hostname
     if host not in LOCAL_HOSTS:
         raise ValueError(f"teachers must run locally (D40); {host!r} isn't this machine")
@@ -47,7 +52,7 @@ def local_teacher(
         )
         with urllib.request.urlopen(request, timeout=timeout) as response:
             choice = json.load(response)["choices"][0]
-        if choice.get("finish_reason") == "length":
+        if choice.get("finish_reason") == "length" and not keep_cut_off:
             return None  # cut off mid-answer
         return (choice.get("message") or {}).get("content") or None
 

@@ -92,7 +92,9 @@ def main(argv: list[str] | None = None) -> int:
         tally = draft.accept_outputs(args.data, args.split, triples, name=args.name)
         print(f"{args.split}: {dict(tally)}")
     elif args.command == "grade":
-        grader = teachers.local_teacher(args.url, model=args.model, max_tokens=60, temperature=0)
+        grader = teachers.local_teacher(
+            args.url, model=args.model, max_tokens=120, temperature=0, keep_cut_off=True
+        )
         if args.calibrate:
             result = grade.calibrate(args.calibrate, grader, split=args.split)
         else:

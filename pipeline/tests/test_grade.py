@@ -35,6 +35,13 @@ def test_replies_are_read_as_verdicts():
     assert says("**BAD**: gives the fix away\nmore") == ("bad", "gives the fix away")
     assert says("I think it's fine") == ("unclear", "I think it's fine")
     assert says("") == ("unclear", "")
+    assert says(None) == ("unclear", "")
+    # Reasoning first, or a verdict later on, still counts.
+    assert says("The code has `Sam` on line 2.\nVerdict: **BAD** - gives it away") == (
+        "bad",
+        "gives it away",
+    )
+    assert says("Checking each claim... all true. GOOD") == ("good", "")
 
 
 def test_grading_covers_every_draft_once_and_resumes(tmp_path, small_dataset):
