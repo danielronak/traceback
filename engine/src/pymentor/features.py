@@ -420,6 +420,8 @@ def _type_error(context: Context) -> Features:
         or context.message_match(r"^not all arguments converted during string formatting")
     ):
         features.update(_from_input(tree, diagnostic))
+    if tree is not None and features.get("right_type") == "str":
+        features["text_literal"] = _text_literal(tree, diagnostic, context.source)
 
     for pattern in (
         r"^'(\w+)' object is not callable",
@@ -503,6 +505,21 @@ def _type_error(context: Context) -> Features:
     return features
 
 
+def _text_literal(tree: ast.Module, diagnostic: Diagnostic, source: str) -> str | None:
+    """`len(names) + " words"`: the text is a label, not a number written as text,
+    so the number must become text rather than the text a number."""
+    operation = node_at(tree, diagnostic, ast.BinOp)
+    if operation is None:
+        return None
+    text = operation.right
+    if isinstance(text, ast.Constant) and isinstance(text.value, str):
+        try:
+            float(text.value)
+        except ValueError:
+            return ast.get_source_segment(source, text)
+    return None
+
+
 def _from_input(tree: ast.Module, diagnostic: Diagnostic) -> Features:
     """Is one side of this operation a variable that holds text from input()?"""
     operation = node_at(tree, diagnostic, ast.BinOp, ast.AugAssign, ast.Compare)
@@ -517,6 +534,37 @@ def _from_input(tree: ast.Module, diagnostic: Diagnostic) -> Features:
         binding = latest_binding_before(tree, name.id, diagnostic.line)
         if binding and is_input_call(_assigned_value(binding, tree)):
             return {"input_name": name.id, "input_line": binding.line}
+    return {}
+
+
+@extractor("KeyError", "ValueError", "TypeError", "IndexError", "test-failed", "wrong-output")
+def _joined_strings(context: Context) -> Features:
+    """`["wash up" "homework"]`: two strings side by side inside brackets, with no
+    comma, are joined into one ("wash uphomework"). The program runs, and fails
+    later wherever the joined text is used."""
+    depth = 0
+    previous = None
+    for tok in tokens(context.source):
+        if tok.type == tokenize.OP and tok.string in "([{":
+            depth += 1
+        elif tok.type == tokenize.OP and tok.string in ")]}":
+            depth -= 1
+        if tok.type in (tokenize.NL, tokenize.NEWLINE, tokenize.COMMENT):
+            continue
+        if (
+            depth > 0
+            and previous is not None
+            and previous.type == tok.type == tokenize.STRING
+            and previous.end[0] == tok.start[0]
+        ):
+            line = tok.start[0]
+            return {
+                "joined_line": line,
+                "joined_text": line_text(context.source, line)[previous.start[1] : tok.end[1]],
+                "joined_gap_start": previous.end[1],  # where the missing comma goes
+                "joined_gap_end": tok.start[1],
+            }
+        previous = tok
     return {}
 
 

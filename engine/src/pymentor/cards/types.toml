@@ -313,6 +313,23 @@ examples = [
 ]
 
 [[card]]
+id = "number-plus-label"
+title = "`+` can't join a number and text (line {line})"
+match = { code = "TypeError", message = "^unsupported operand type\\(s\\) for \\+: '(int|float)' and 'str'", when = { text_literal = true } }
+rule = "`+` adds numbers to numbers, or joins text to text. To put a number into text, turn the number into text with `str()`, or use an f-string."
+why = "Python won't guess whether you meant to add or to join, so mixing a number and text is an error rather than a surprise. {text_literal} is text that isn't a number, so it can't be added to one: the number has to become text instead."
+hints = [
+  "What type is each side of the `+` on line {line}?",
+  "The left side is a number, and {text_literal} on the right is text that isn't a number.",
+  "Wrap the number in `str(...)`, or use an f-string.",
+]
+fix = "str_left_operand"
+related = ["number-plus-text", "str-plus-int"]
+examples = [
+  { source = "names = [\"Ada\", \"Sam\"]\nprint(len(names) + \" names\")\n", after = "print(str(len(names)) + \" names\")" },
+]
+
+[[card]]
 id = "number-plus-text"
 title = "`+` can't add text to a number (line {line})"
 match = { code = "TypeError", message = "^unsupported operand type\\(s\\) for \\+=?: '(int|float)' and 'str'" }

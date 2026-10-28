@@ -145,3 +145,22 @@ hints = [
 examples = [
   { source = "names = ['Ada', 'Sam']\nnames.remove('Bo')\n" },
 ]
+
+[[card]]
+id = "missing-comma-joins-text"
+title = "The text on line {joined_line} is joined into one piece"
+match = { code = ["KeyError", "ValueError", "TypeError", "IndexError", "test-failed", "wrong-output"], when = { joined_line = true } }
+priority = 30
+rule = "Two pieces of text written side by side, with nothing between them, become one piece of text. In a list or a function call, put a comma between items."
+why = "Python joins text written next to each other on purpose, so that long text can be split over several lines. A missing comma triggers the same joining without any warning, so the program only goes wrong later, where the joined text is used."
+hints = [
+  "Look closely at `{joined_text}` on line {joined_line}. How many separate items did you mean there?",
+  "With nothing between them, `{joined_text}` is one piece of text, not two.",
+  "Put a comma between the two pieces of text on line {joined_line}.",
+]
+fix = "comma_between_strings"
+related = ["key-missing", "remove-missing-item"]
+examples = [
+  { source = "jobs = [\"wash up\" \"homework\", \"walk dog\"]\njobs.remove(\"homework\")\nprint(jobs)\n", after = "jobs = [\"wash up\", \"homework\", \"walk dog\"]" },
+  { source = "prices = {\"50p\": 0.5, \"10p\": 0.1}\ncoins = [\"50p\" \"10p\"]\nfor coin in coins:\n    print(prices[coin])\n", after = "coins = [\"50p\", \"10p\"]" },
+]

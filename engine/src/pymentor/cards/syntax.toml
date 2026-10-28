@@ -239,9 +239,10 @@ hints = [
   "Two values are written side by side with nothing between them.",
   "Put a comma between each pair of items.",
 ]
+fix = "insert_comma"
 examples = [
-  { source = "numbers = [1 2 3]\n" },
-  { source = "print(\"Total:\" total)\n" },
+  { source = "numbers = [1 2 3]\n", after = "numbers = [1, 2, 3]" },
+  { source = "print(\"Total:\" total)\n", after = "print(\"Total:\", total)" },
 ]
 
 [[card]]

@@ -45,3 +45,16 @@ def test_loop_whose_condition_never_changes():
 def test_in_place_method_result():
     f = features_for("nums = [2, 1]\nordered = nums.sort()\nordered.append(3)\n")
     assert (f["none_name"], f["inplace_method"], f["inplace_line"]) == ("ordered", "sort", 2)
+
+
+def test_strings_side_by_side_in_brackets_were_meant_as_two():
+    found = features_for('jobs = ["wash up" "homework"]\njobs.remove("homework")\n')
+    assert found["joined_line"] == 1 and found["joined_text"] == '"wash up" "homework"'
+    # Text split over lines on purpose is the feature's legitimate use.
+    split = features_for('label = ("Total: "\n         "items")\nprint(label + 1)\n')
+    assert "joined_line" not in split
+
+
+def test_text_added_to_a_number_is_a_label_unless_it_holds_a_number():
+    assert features_for('print(len([1]) + " items")\n')["text_literal"] == '" items"'
+    assert features_for('print(5 + "7")\n')["text_literal"] is None
