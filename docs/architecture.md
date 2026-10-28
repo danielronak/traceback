@@ -579,3 +579,57 @@ a name was created. Changes:
 The instructions are about 1,100 tokens, so the teacher server needs a context
 window of at least 4,096 tokens. Ollama otherwise cuts the start of the prompt
 without warning. *Accepted; the third trial measures it.*
+
+**D49. Teacher, fourth round, after the third trial.** The third trial kept 357
+of 500 answers, and a person rated 62% of a sample of 50 as good. That's no
+better than trial 2's 68%, which is within the noise for 50 answers. It ran on
+data generated before D48's engine changes, so the new `attribute-typo` card
+never appeared. `explain`, `why_followup` and `hint_level_3` were rated good 26
+times out of 31. Hints 1 and 2 were rated good only 5 times out of 19, and that
+is where the bad ratings came from:
+
+- The early hints gave the answer away: `.append`, `"Sam"`, "a comma",
+  `print`.
+- Hints went wrong where the engine knew nothing about the real cause. Text
+  written side by side (`"wash up" "homework"`) is joined into one string, but
+  the cards only said "check the spelling".
+- The `number-plus-text` card advised `int()` for `len(names) + " words"`.
+  Converting `" words"` that way fails.
+- Answers about wrong results invented a cause.
+
+Changes:
+
+- **Engine.**
+  - A `joined_text` feature and a `missing-comma-joins-text` card (priority
+    30), with a verified fix.
+  - A `number-plus-label` card for text that isn't a number. It turns the
+    number into text instead.
+  - An `insert_comma` fix for `missing-comma`.
+  - The `off-by-one` card's reason now also covers `<` and `<=`.
+- **Grounding.** An early hint may not name a name, string or symbol that the
+  fix adds, unless the card's own hints up to that step say it.
+- **Pipeline.**
+  - Fixes that insert a line (`import math`) now verify.
+  - The manifest records a fingerprint of the engine, and `draft` refuses data
+    that a different engine generated.
+  - The instructions say less is more for hints 1 and 2, and that for wrong
+    answers the facts give the symptom, not the cause.
+
+If the next trial still rates below 80% good, the plan is a larger local
+teacher for the drafting run. Hints could come from the card text instead, but
+the tutor still has to learn to write them. *Accepted; the fourth trial
+measures it.*
+
+**D50. A local model grades the drafts, checked against people.** Reading 50
+answers for each trial is slow, and 50 is still a noisy sample. `grade` asks a
+local model to judge every accepted draft with a rubric that mirrors the human
+review: is every claim about the code true, and is the answer right for its
+task? Each verdict is one line, so grading costs much less than drafting. A
+grader is only trusted after `grade --calibrate` has graded the answers people
+already reviewed in earlier trials, and reported how often it agrees and how
+many of their "bad" verdicts it catches. A person then checks 15 answers per
+trial instead of 50. The grader runs locally like the teacher (D40). By default
+it is the teacher model itself, which may go easy on its own mistakes; the
+calibration shows whether that matters. If the grader proves reliable, its
+verdicts can also filter the full drafting run before training. *Accepted;
+calibration decides whether it's used.*

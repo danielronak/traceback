@@ -128,11 +128,12 @@ def fix_verifies(item: Item, code: str) -> bool:
     fix = item.finding.fix
     lines = item.source.splitlines()
     start = fix.line if fix else d.line
-    count = max(len(fix.before.splitlines()), 1) if fix else 1
+    # A fix with nothing before it (`import math` added at the top) inserts lines.
+    count = len(fix.before.splitlines()) if fix else 1
     new = code.rstrip("\n").splitlines()
     if not new:
         return False
-    if len(new) > count and len(new) >= len(lines) - 1:
+    if len(new) > max(count, 1) and len(new) >= len(lines) - 1:
         candidates = ["\n".join(new) + "\n"]  # a whole program
     else:
         versions = [new]

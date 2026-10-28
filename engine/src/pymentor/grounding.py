@@ -17,7 +17,8 @@ after every generation in the browser:
   must be the learner's code, the card's or the fix's.
 - **Error types** named (``NameError`` and so on) must be the actual error, or
   one the card itself names.
-- **Early hints** must not give the fix away.
+- **Early hints** must not give the fix away: not its code, nor a name, text or
+  symbol it adds that the card's hints so far don't mention.
 - **Length** stays within a limit per task.
 """
 
@@ -28,9 +29,12 @@ import builtins
 import keyword
 import re
 import textwrap
+import tokenize
+from collections import Counter
 from dataclasses import dataclass
 
-from .facts import Finding
+from .facts import Finding, Fix
+from .source import tokens
 
 # Words per task: short enough to read on a card, long enough to explain.
 WORD_LIMITS = {
@@ -112,15 +116,60 @@ def check(text: str, finding: Finding, source: str, task: str) -> list[Problem]:
             )
 
     if task in EARLY_HINTS and finding.fix is not None:
-        for fixed_line in finding.fix.after.splitlines():
-            if fixed_line.strip() and _squash(fixed_line) in _squash(text):
-                problems.append(Problem("leak", "an early hint shows the fixed code"))
-                break
+        # Naming what the fix adds (`.append`, `"Sam"`, a comma) gives the answer
+        # away too, unless the card's own hints up to this step already say it.
+        hints = finding.card.hints[: EARLY_HINTS.index(task) + 1] if finding.card else ()
+        named = [
+            piece
+            for piece in fix_pieces(finding.fix)
+            if _says(text, piece) and not any(_says(hint, piece) for hint in hints)
+        ]
+        if any(
+            line.strip() and _squash(line) in _squash(text)
+            for line in finding.fix.after.splitlines()
+        ):
+            problems.append(Problem("leak", "an early hint shows the fixed code"))
+        elif named:
+            problems.append(Problem("leak", f"an early hint names {named[0]!r}, from the fix"))
 
     words = len(text.split())
     if words > WORD_LIMITS.get(task, 150):
         problems.append(Problem("length", f"{words} words; {task} allows {WORD_LIMITS[task]}"))
     return problems
+
+
+SYMBOL_WORDS = {",": "comma", ":": "colon", "==": "double equals"}
+
+
+def fix_pieces(fix: Fix) -> list[str]:
+    """The names, text and symbols a fix adds: what an early hint mustn't name."""
+    before = Counter((tok.type, tok.string) for tok in tokens(textwrap.dedent(fix.before)))
+    pieces = []
+    for tok in tokens(textwrap.dedent(fix.after)):
+        key = (tok.type, tok.string)
+        if before[key]:
+            before[key] -= 1
+        elif _telling(tok):
+            pieces.append(tok.string)
+    return list(dict.fromkeys(pieces))
+
+
+def _telling(tok: tokenize.TokenInfo) -> bool:
+    if tok.type == tokenize.NAME:
+        return not keyword.iskeyword(tok.string)
+    if tok.type == tokenize.STRING:
+        return len(tok.string) > 2  # not an empty ""
+    return tok.type == tokenize.OP and tok.string in SYMBOL_WORDS
+
+
+def _says(text: str, piece: str) -> bool:
+    if piece in SYMBOL_WORDS:
+        return f"`{piece}`" in text or bool(
+            re.search(rf"\b{SYMBOL_WORDS[piece]}s?\b", text, re.IGNORECASE)
+        )
+    if piece.isidentifier():
+        return bool(re.search(rf"(?<![\w]){re.escape(piece)}(?![\w])", text))
+    return _squash(piece) in _squash(text)
 
 
 def is_grounded(text: str, finding: Finding, source: str, task: str) -> bool:

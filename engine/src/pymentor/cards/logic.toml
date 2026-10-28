@@ -70,7 +70,7 @@ id = "off-by-one"
 title = "`{call}` is off by one: it returned {actual}, not {expected}"
 match = { code = "test-failed", when = { off_by_one = true } }
 rule = "An answer that's off by exactly one usually means a loop or `range` starts or stops one step early or late, or a `<` should be `<=` (or the other way round)."
-why = "`range(n)` stops just *before* `n`, and positions start at 0. Those two facts make off-by-one mistakes one of the most common logic errors in all of programming."
+why = "`range(n)` stops just *before* `n`, positions start at 0, and `<` and `<=` only give different answers when both sides are equal. Small details like these move an answer by exactly one, which makes off-by-one mistakes one of the most common logic errors in all of programming."
 hints = [
   "Your answer is exactly one away from the right one.",
   "Check where your loop or `range` starts and stops, and any `<` or `<=`.",

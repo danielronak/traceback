@@ -124,3 +124,33 @@ def test_statements_in_backticks_must_come_from_the_code_card_or_fix():
     invented = "Write `year = 0` first."
     problems = [p for p in check(invented, finding, NAME_TYPO, "explain") if p.check == "code"]
     assert problems and "year = 0" in problems[0].detail
+
+
+@pytest.mark.parametrize(
+    ("source", "task", "text"),
+    [
+        ("print(Sam)\n", "hint_level_1", 'Is `Sam` text? Then it needs quote marks: `"Sam"`.'),
+        ("items = []\nitems.appned(3)\n", "hint_level_1", "Did you mean `.append` on line 2?"),
+        ("nums = [1 2, 3]\n", "hint_level_1", "Look at line 1. Is a comma missing?"),
+        ("x = 1\nprnit(x)\n", "hint_level_2", "Line 2 has `prnit` instead of `print`."),
+    ],
+)
+def test_early_hints_must_not_name_what_the_fix_adds(source, task, text):
+    assert [p.check for p in check(text, _finding(source), source, task)] == ["leak"]
+
+
+def test_an_early_hint_may_say_what_the_cards_own_hint_says():
+    source = "x = 1\nif x > 0\n    print(x)\n"  # the fix adds a colon
+    finding = _finding(source)
+    assert finding.fix is not None
+    assert (
+        check(
+            "Look at the very end of line 2. Is something missing?", finding, source, "hint_level_1"
+        )
+        == []
+    )
+    assert [p.check for p in check("Line 2 needs a colon.", finding, source, "hint_level_1")] == [
+        "leak"
+    ]
+    # The same words are fine once the near-answer step is reached.
+    assert check("Line 2 needs a colon.", finding, source, "hint_level_3") == []

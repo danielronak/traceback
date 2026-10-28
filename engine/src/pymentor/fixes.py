@@ -9,6 +9,8 @@ the first candidate that ``verify`` accepts and drops the rest (D3, D4).
 from __future__ import annotations
 
 import ast
+import itertools
+import keyword
 import re
 import tokenize
 from collections.abc import Callable
@@ -135,6 +137,42 @@ def insert_colon(ctx: FixContext) -> list[str]:
         replace_line(ctx.source, ctx.diagnostic.line, code.rstrip() + ":" + comment),
         replace_line(ctx.source, ctx.diagnostic.line, text[:col] + ":" + text[col:]),
     ]
+
+
+@generator
+def insert_comma(ctx: FixContext) -> list[str]:
+    """[1 2 3]  ->  [1, 2, 3]: a comma in each gap Python points at, until it stops asking."""
+    source, diagnostic = ctx.source, ctx.diagnostic
+    for _ in range(10):
+        gap = _value_gap(line_text(source, diagnostic.line), diagnostic.col, diagnostic.end_col)
+        if gap is None:
+            return []
+        source = replace_span(source, diagnostic.line, gap[0], gap[1], ", ")
+        error = check_syntax(source)
+        same = error is not None and error.message == ctx.diagnostic.message
+        if not same or error.line != ctx.diagnostic.line:
+            return [source]
+        diagnostic = error
+    return []
+
+
+def _value_gap(text: str, col: int, end_col: int | None) -> tuple[int, int] | None:
+    """The space between the first two side-by-side values in columns [col, end_col)."""
+    found = [t for t in tokens(text.lstrip() + "\n") if t.type != tokenize.NEWLINE]
+    shift = len(text) - len(text.lstrip())
+    end = end_col if end_col is not None else len(text)
+    for left, right in itertools.pairwise(found):
+        start, stop = left.end[1] + shift, right.start[1] + shift
+        if col <= start and stop <= end and _value_edge(left, ")]}") and _value_edge(right, "([{"):
+            return start, stop
+    return None
+
+
+def _value_edge(tok: tokenize.TokenInfo, brackets: str) -> bool:
+    """Can a value end (brackets ")]}") or start ("([{") with this token?"""
+    if tok.type == tokenize.NAME:
+        return not keyword.iskeyword(tok.string) or tok.string in ("True", "False", "None")
+    return tok.type in (tokenize.NUMBER, tokenize.STRING) or tok.string in brackets
 
 
 @generator
@@ -298,6 +336,14 @@ def replace_module(ctx: FixContext) -> list[str]:
     return [replace_span(ctx.source, ctx.diagnostic.line, match.start(), match.end(), new)]
 
 
+@generator
+def comma_between_strings(ctx: FixContext) -> list[str]:
+    """["wash up" "homework"]  ->  ["wash up", "homework"]"""
+    f = ctx.features
+    line, start, end = f["joined_line"], f["joined_gap_start"], f["joined_gap_end"]
+    return [replace_span(ctx.source, line, start, end, ", ")]
+
+
 # --- type fixes ----------------------------------------------------------------
 
 
@@ -308,6 +354,15 @@ def str_right_operand(ctx: FixContext) -> list[str]:
     if node is None:
         return []
     return [_wrap(ctx, node.right, "str")]
+
+
+@generator
+def str_left_operand(ctx: FixContext) -> list[str]:
+    """len(names) + ' words'  ->  str(len(names)) + ' words'"""
+    node = _node_at(ctx, ast.BinOp)
+    if node is None:
+        return []
+    return [_wrap(ctx, node.left, "str")]
 
 
 @generator

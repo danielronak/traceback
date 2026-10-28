@@ -31,7 +31,7 @@ from typing import Any
 from pymentor import grounding, prompt
 
 from .evaluate import FENCE, Item, fix_verifies
-from .generate import read_jsonl
+from .generate import engine_fingerprint, read_jsonl
 from .records import finding_from_record
 
 Teacher = Callable[[str, str], str | None]  # (system, prompt) -> text, or None if declined
@@ -42,9 +42,11 @@ TASK_GUIDE = {
     "explain": "Explain the error using the learner's own code and names: what Python "
     "objected to, and the rule behind it. You may end with the corrected code.",
     "hint_level_1": "A gentle nudge: point to where to look (the line, or the part of the "
-    "line) and ask a question about it. Don't say what is wrong or what to change.",
-    "hint_level_2": "A clearer hint: name the idea that is wrong, using the card's hint, "
-    "without spelling out the edit or showing code.",
+    "line) and ask one question about it. Don't say what is wrong, what is missing or what "
+    "to change, and don't explain the rule: say no more than the card's <|hint|>.",
+    "hint_level_2": "A clearer hint: go further than the nudge, using the card's <|hint|> and "
+    "pointing to the place in their code it's about. Don't name the symbol, word or code that "
+    "fixes it.",
     "hint_level_3": "A near-answer: say exactly what to change. You may show the corrected code.",
     "why_followup": "Answer the learner's <|question|>: explain the card's reason (its last "
     "part) in your own words, then connect it to their code.",
@@ -90,6 +92,9 @@ the corrected line(s) from <|fix|>. Never invent a fix, a value or a variable.
 - Never guess what the learner meant beyond what the error and the card say. If the card \
 gives an example (such as one method instead of another), don't present it as the answer.
 - Name no error type except the one in <|error|>.
+- When the code runs but gives a wrong answer, or never stops, the facts give the symptom, \
+not the cause. Don't say which line or step causes it, and don't retell what the code does: \
+quote it in backticks. Use the card's idea and suggest tracing the values.
 - Don't contradict the card or add rules it doesn't state.
 
 Code blocks:
@@ -154,6 +159,7 @@ def draft(
     log: Callable[[str], object] = print,
 ) -> Counter[str]:
     """Draft targets for one split of a generated dataset, resuming if interrupted."""
+    require_fresh(data)
     cases = {c["id"]: c for c in read_jsonl(data / f"cases-{split}.jsonl")}
     accepted_path = data / f"drafts-{split}.jsonl"
     rejected_path = data / f"rejected-{split}.jsonl"
@@ -187,6 +193,20 @@ def draft(
     return tally
 
 
+def require_fresh(data: Path) -> None:
+    """Refuse to draft from data the current engine didn't generate: its findings,
+    cards and fixes would be out of date, and so would every answer drafted."""
+    manifest = data / "manifest.json"
+    if not manifest.exists():
+        return
+    made_with = json.loads(manifest.read_text(encoding="utf-8")).get("engine")
+    if made_with != engine_fingerprint():
+        raise SystemExit(
+            f"{data} was generated with an older engine. "
+            "Run `python -m pymentor_pipeline generate` again, then draft."
+        )
+
+
 def _pace(started: float, count: int) -> str:
     seconds = time.monotonic() - started
     return f"{seconds / max(count, 1):.1f} s per answer" if count else "no answers yet"
@@ -196,6 +216,7 @@ def accept_outputs(
     data: Path, split: str, outputs: Iterable[tuple[str, str, str | None]], *, name: str
 ) -> Counter[str]:
     """Judge outputs a local teacher made offline, as ``(case, task, text)`` triples."""
+    require_fresh(data)
     cases = {c["id"]: c for c in read_jsonl(data / f"cases-{split}.jsonl")}
     prompts = {_key(e): e["prompt"] for e in read_jsonl(data / f"examples-{split}.jsonl")}
     tally: Counter[str] = Counter()

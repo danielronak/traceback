@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from . import benchmark, draft, evaluate, review, teachers
+from . import benchmark, draft, evaluate, grade, review, teachers
 from .generate import DEFAULT_PER_KIND, DEFAULT_VARIANTS, generate, read_jsonl
 
 REPO = Path(__file__).resolve().parents[3]
@@ -51,6 +51,19 @@ def main(argv: list[str] | None = None) -> int:
     rv.add_argument("--sample", type=int, default=50)
     rv.add_argument("--summary", action="store_true", help="only print the results so far")
 
+    gr = commands.add_parser("grade", help="have a local model grade the drafted answers")
+    gr.add_argument("--url", default=teachers.DEFAULT_URL, help="the local model server")
+    gr.add_argument("--model", default="local", help="the grader's name, as the server knows it")
+    gr.add_argument("--data", type=Path, default=REPO / "data" / "generated" / "v1")
+    gr.add_argument("--split", default="train")
+    gr.add_argument(
+        "--calibrate",
+        type=Path,
+        nargs="+",
+        metavar="FOLDER",
+        help="instead, grade answers people reviewed in these folders and compare",
+    )
+
     rp = commands.add_parser("report", help="a drafting checkpoint: counts, reasons, examples")
     rp.add_argument("--data", type=Path, default=REPO / "data" / "generated" / "v1")
     rp.add_argument("--split", default="train")
@@ -78,6 +91,13 @@ def main(argv: list[str] | None = None) -> int:
         triples = ((r["case"], r["task"], r.get("output")) for r in rows)
         tally = draft.accept_outputs(args.data, args.split, triples, name=args.name)
         print(f"{args.split}: {dict(tally)}")
+    elif args.command == "grade":
+        grader = teachers.local_teacher(args.url, model=args.model, max_tokens=60, temperature=0)
+        if args.calibrate:
+            result = grade.calibrate(args.calibrate, grader, split=args.split)
+        else:
+            result = grade.grade(args.data, args.split, grader, name=args.model)
+        print(json.dumps(result, indent=2))
     elif args.command == "report":
         review.report(args.data, args.split)
     elif args.command == "review":

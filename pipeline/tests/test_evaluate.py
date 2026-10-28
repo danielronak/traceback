@@ -3,6 +3,7 @@
 import csv
 from pathlib import Path
 
+from pymentor import Engine
 from pymentor_pipeline import benchmark, evaluate
 from pymentor_pipeline.baseline import template
 
@@ -62,3 +63,12 @@ def test_hand_scoring_sheet_has_a_sample_of_every_task(tmp_path):
 def test_models_load_by_name():
     assert evaluate.load_model("template") is template
     assert evaluate.load_model("pymentor_pipeline.baseline:template") is template
+
+
+def test_a_fix_that_adds_a_line_verifies_when_the_model_shows_that_line():
+    source = "w = 3\nc = 4\nprint(math.sqrt(w**2 + c**2))\n"
+    finding = Engine().run(source).findings[0]
+    assert finding.fix is not None and finding.fix.before == ""  # inserts `import math`
+    item = evaluate.Item("c", "explain", "", finding, source, (), ())
+    assert evaluate.fix_verifies(item, "import math")
+    assert not evaluate.fix_verifies(item, "import maths")
