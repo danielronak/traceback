@@ -14,6 +14,7 @@ reports how often it agrees. Graders run locally, like teachers (D40).
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from collections.abc import Callable, Iterable
 from pathlib import Path
@@ -45,19 +46,23 @@ their code.
 Otherwise it is GOOD. Reply with one line only: GOOD, or BAD: and a reason in a few words."""
 
 Grader = Teacher  # (system, prompt) -> text: the same local model servers
+VERDICT = re.compile(
+    r"\b(GOOD|BAD)\b\**[ \t]*[:.\-]?[ \t]*([^\n]*)"
+)  # the reason is the rest of its line
 
 
 def grade_one(grader: Grader, prompt_text: str, answer: str) -> tuple[str, str]:
     """``("good" | "bad" | "unclear", reason)`` for one drafted answer."""
     facts = prompt_text.removesuffix("<|response|>").strip()
     reply = grader(RUBRIC, f"{facts}\n\nThe tutor's answer:\n{answer.removesuffix('<|end|>')}")
-    line = (reply or "").strip().splitlines()[0].strip() if (reply or "").strip() else ""
-    word = line.split(":", 1)[0].strip(" *.").upper()
-    if word == "GOOD":
+    # Graders sometimes reason before the verdict, or run out of room after it:
+    # the first GOOD or BAD anywhere is the verdict.
+    found = VERDICT.search(reply or "")
+    if found is None:
+        return "unclear", " ".join((reply or "").split())[:200]
+    if found[1].upper() == "GOOD":
         return "good", ""
-    if word == "BAD":
-        return "bad", line.split(":", 1)[1].strip() if ":" in line else ""
-    return "unclear", line
+    return "bad", " ".join(found[2].split()).strip(" *.:-")[:200]
 
 
 def grade(

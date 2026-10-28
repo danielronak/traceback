@@ -31,10 +31,26 @@ class Example:
 
 
 def load_drafts(path: Path) -> list[Example]:
-    """Accepted drafts (``drafts-<split>.jsonl``) as training examples."""
-    with Path(path).open(encoding="utf-8") as file:
-        rows = [json.loads(line) for line in file if line.strip()]
-    return [Example(r["case"], r["task"], r["prompt"], r["target"]) for r in rows]
+    """Accepted drafts (``drafts-<split>.jsonl``) as training examples, minus any
+    the grader marked bad (``grades-<split>.jsonl``, if it exists; D50)."""
+    path = Path(path)
+    bad = {(r["case"], r["task"]) for r in _rows(_grades_for(path)) if r["verdict"] == "bad"}
+    return [
+        Example(r["case"], r["task"], r["prompt"], r["target"])
+        for r in _rows(path)
+        if (r["case"], r["task"]) not in bad
+    ]
+
+
+def _grades_for(drafts: Path) -> Path:
+    return drafts.with_name(drafts.name.replace("drafts-", "grades-", 1))
+
+
+def _rows(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    with path.open(encoding="utf-8") as file:
+        return [json.loads(line) for line in file if line.strip()]
 
 
 def add_special_tokens(tokenizer: Any, model: Any = None) -> int:

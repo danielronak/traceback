@@ -633,3 +633,16 @@ it is the teacher model itself, which may go easy on its own mistakes; the
 calibration shows whether that matters. If the grader proves reliable, its
 verdicts can also filter the full drafting run before training. *Accepted;
 calibration decides whether it's used.*
+
+**D51. Grader verdicts filter training, and the fourth trial passes.** In the
+fourth trial the grader judged 360 accepted answers 89% good. The person
+reviewed 15 and rated 87% good (13 of 15). That clears the 80% bar, so the full
+drafting run goes ahead. One bad answer copied the `attribute-missing` card's
+`.push()` example into an `int` case. The cause was the card itself. Its
+example hint is gone. A new `method-of-another-type` card covers a real method
+used on the wrong type (`score.rjust(4)`, where `.rjust` belongs to `str`).
+There were 32 "unclear" verdicts with no reason. The grader often reasoned
+before answering and ran past its 60-token cap, and the client discarded cut-off
+replies. Now it keeps them, allows 120 tokens, and reads the first GOOD or BAD
+anywhere in the reply. `load_drafts` leaves out answers graded bad, so the
+grader's work also cleans the training set. *Accepted.*
