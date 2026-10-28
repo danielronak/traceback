@@ -129,3 +129,22 @@ def test_answer_only_scoring_gives_the_models_own_loss(tiny_base, tiny_data):
     batch = collate(rows, tokenizer.pad_token_id)
     assert model.config.model_type == "llama"
     assert abs(answer_loss(model, batch).item() - model(**batch).loss.item()) < 1e-5
+
+
+def test_drafts_the_grader_marked_bad_are_left_out(tiny_data, tmp_path):
+    from pymentor_training.data import load_drafts
+
+    rows = (tiny_data / "drafts-train.jsonl").read_text(encoding="utf-8")
+    (tmp_path / "drafts-train.jsonl").write_text(rows, encoding="utf-8")
+    everything = load_drafts(tmp_path / "drafts-train.jsonl")
+    first, second = everything[0], everything[1]
+    grades = [
+        {"case": first.case, "task": first.task, "verdict": "bad"},
+        {"case": second.case, "task": second.task, "verdict": "good"},
+    ]
+    (tmp_path / "grades-train.jsonl").write_text(
+        "".join(json.dumps(g) + "\n" for g in grades), encoding="utf-8"
+    )
+    kept = load_drafts(tmp_path / "drafts-train.jsonl")
+    assert len(kept) == len(everything) - 1
+    assert first not in kept and second in kept
