@@ -1,4 +1,4 @@
-# Tracebacl
+# Traceback
 
 A free app that teaches Python the way a patient teacher would.
 It underlines your mistakes as you code, explains why Python works that way, and
