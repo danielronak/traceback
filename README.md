@@ -1,6 +1,6 @@
-# PyMentor
+# Tracebacl
 
-*Working title.* A free app that teaches Python the way a patient teacher would.
+A free app that teaches Python the way a patient teacher would.
 It underlines your mistakes as you code, explains why Python works that way, and
 helps you fix them yourself. Think Grammarly for Python, built to teach rather
 than just correct.
